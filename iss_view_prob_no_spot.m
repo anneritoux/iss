@@ -1,4 +1,4 @@
-function iss_view_prob_no_spot(o, FigNo, Norm, LookupTable, GeneNames)
+function iss_view_prob_no_spot(o, FigNo, Norm, LookupTable, GeneNames, SpotNo)
 %% iss_view_prob_no_spot(o, FigNo, Norm, LookupTable, GeneNames)
 %
 % This function lets you view the spot code, gene code,
@@ -21,7 +21,7 @@ function iss_view_prob_no_spot(o, FigNo, Norm, LookupTable, GeneNames)
 
 
 %%
-if nargin>=2
+if nargin>=2 && nargin<6
     figure(FigNo);
 end
 
@@ -39,8 +39,12 @@ if isempty(GeneNumbers)
     GeneNumbers = find(ismember(o.GeneNames,GeneNames));
 end
 
-CrossHairColor = [1,1,1];   %Make white as black background
-xy = ginput_modified(1,CrossHairColor);
+if nargin<6 || isempty(SpotNo)
+    CrossHairColor = [1,1,1];   %Make white as black background
+    xy = ginput_modified(1,CrossHairColor);
+else
+    xy = o.SpotGlobalYX(SpotNo,[2,1]);
+end
 
 %% Get in spot color at this position
 %Find tile that the point is on and local centered coordinates in reference round
@@ -53,7 +57,7 @@ SpotColor = zeros(1,o.nBP,o.nRounds);
 for r=1:o.nRounds
     for b=1:o.nBP
         
-        rbYX = round(o.A(b)*([LocalYX,1]*o.D(:,:,t,r))+o.TileCentre);
+        rbYX = round([LocalYX,1]*o.D(:,:,t,r,b)+o.TileCentre);
         y0 = rbYX(1);
         x0 = rbYX(2);
         if y0>o.TileSz || y0<1 || x0>o.TileSz || x0<1
@@ -175,7 +179,7 @@ S.ax1.YTickLabel = S.bpLabels;
 S.ax1.YLabel.String = 'Color Channel';
 hold on
 for r=1:S.nRounds
-    rectangle(S.ax1,'Position',S.gSquares(r,:),'EdgeColor','r','LineWidth',1,'LineStyle',':')
+    rectangle(S.ax1,'Position',S.gSquares(r,:),'EdgeColor','r','LineWidth',2,'LineStyle',':')
 end
 hold off
 
@@ -188,12 +192,13 @@ S.ax2.YTickLabel = S.bpLabels;
 S.ax2.YLabel.String = 'Color Channel';
 hold on
 for r=1:S.nRounds
-    rectangle(S.ax2,'Position',S.gSquares(r,:),'EdgeColor','r','LineWidth',1,'LineStyle',':')
+    rectangle(S.ax2,'Position',S.gSquares(r,:),'EdgeColor','r','LineWidth',2,'LineStyle',':')
 end
 hold off
 
 S.ax3 = subplot(3,1,3);
 S.ClickPlot = imagesc(S.ax3,squeeze(S.ProbMatrices(S.CodeNo,:,:))); colorbar;
+colormap(gca,bluewhitered);
 %caxis([min(ProbMatrix(:)) max(ProbMatrix(:))]);
 S.ax3.YTick = 1:S.nBP;
 S.ax3.YTickLabel = S.bpLabels;
@@ -206,7 +211,7 @@ S.ax3.Title.String = '$\ln\left({\frac{P(spot\,\mid \,gene\,\, and\,\, backgroun
 set(S.ClickPlot,'ButtonDownFcn',{@getCoord,S});
 hold on
 for r=1:S.nRounds
-    rectangle(S.ax3,'Position',S.gSquares(r,:),'EdgeColor','r','LineWidth',1,'LineStyle',':')
+    rectangle(S.ax3,'Position',S.gSquares(r,:),'EdgeColor','g','LineWidth',2,'LineStyle',':')
 end
 hold off
 
@@ -330,6 +335,7 @@ S.ax2.YLabel.String = 'Color Channel';
 
 
 S.ClickPlot = imagesc(S.ax3,squeeze(S.ProbMatrices(S.CodeNo,:,:)));
+colormap(gca,bluewhitered);
 colorbar(S.ax3);
 S.ax3.YTick = 1:S.nBP;
 S.ax3.YTickLabel = S.bpLabels;
@@ -351,12 +357,19 @@ for r=1:S.nRounds
     end
 end
 
+ax_index = 1;
 for ax = [S.ax1,S.ax2,S.ax3]
+    if ax_index<3
+        ax_color = 'r';
+    else
+        ax_color = 'g';
+    end
     hold on
     for r=1:S.nRounds
-        rectangle(ax,'Position',S.gSquares(r,:),'EdgeColor','r','LineWidth',1,'LineStyle',':');
+        rectangle(ax,'Position',S.gSquares(r,:),'EdgeColor',ax_color,'LineWidth',2,'LineStyle',':');
     end
     hold off
+    ax_index = ax_index+1;
 end
 S = getFigureTitle(S);
 drawnow

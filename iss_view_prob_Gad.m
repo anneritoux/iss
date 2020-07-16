@@ -1,4 +1,4 @@
-function SpotNo = iss_view_prob(o, FigNo, Norm, Method, SpotNum)
+function SpotNo = iss_view_prob_Gad(o, FigNo, Norm, Method, SpotNum)
 %% SpotNo = iss_view_prob(o, FigNo, Norm, Method, SpotNum)
 %
 % This function lets you view the spot code, gene code
@@ -54,6 +54,7 @@ end
 
 %Different parameters for different methods
 if strcmpi('Prob',Method)
+    
     CodeNo = o.pSpotCodeNo(SpotNo);
     SpotColor = o.cSpotColors(SpotNo,:,:);
     SpotScore = o.pSpotScore(SpotNo);
@@ -61,6 +62,7 @@ if strcmpi('Prob',Method)
     SpotScoreDev = o.pSpotScoreDev(SpotNo);
     SpotIntensity = o.pSpotIntensity(SpotNo);
     SpotGlobalYX = o.SpotGlobalYX(SpotNo,:);
+    GadRoundCode = o.pGadColor(SpotNo,:);
 elseif strcmpi('Pixel',Method)
     CodeNo = o.pxSpotCodeNo(SpotNo);
     SpotColor = o.pxSpotColors(SpotNo,:,:);
@@ -69,6 +71,7 @@ elseif strcmpi('Pixel',Method)
     SpotScoreDev = o.pxSpotScoreDev(SpotNo);
     SpotIntensity = o.pxSpotIntensity(SpotNo);
     SpotGlobalYX = o.pxSpotGlobalYX(SpotNo,:);
+    GadRoundCode = o.pxGadColor(SpotNo,:);
 else
     error('Spot calling method not valid, should be Prob or Pixel');
 end
@@ -78,6 +81,7 @@ if nargin<3 || isempty(Norm)
 end
 
 %Different Normalisations
+
 if isempty(Norm) || Norm == 1
     cSpotColor = SpotColor;
     cBledCodes = o.pBledCodes;
@@ -96,6 +100,8 @@ elseif Norm == 2
     %cSpotColor = o.cNormSpotColors(SpotNo,:,:);
     cBledCodes = bsxfun(@rdivide, o.BledCodes, sqrt(sum(o.BledCodes.^2,2)));
     %cBledCodes = o.NormBledCodes;
+    Gad_p = prctile(o.pGadColor, o.SpotNormPrctile);
+    GadRoundCode = GadRoundCode./Gad_p;
 elseif Norm == 3
     cSpotColor = SpotColor;
     NewBleedMatrix = o.pBleedMatrix;
@@ -106,6 +112,8 @@ elseif Norm == 3
         NewBleedMatrix(b,:,:) = o.pBleedMatrix(b,:,:)/p;
     end
     cBledCodes = change_bled_codes(o,NewBleedMatrix);
+    Gad_p = prctile(o.pGadColor, o.SpotNormPrctile);
+    GadRoundCode = GadRoundCode./Gad_p;
 end
 
 MeasuredCode = squeeze(cSpotColor);
@@ -129,16 +137,19 @@ catch
     figure(430476533)
 end
 subplot(3,1,1);
-imagesc(MeasuredCode); colorbar
-caxis([0 max(MeasuredCode(:))]);
+imagesc([MeasuredCode,GadRoundCode']); colorbar
+%caxis([0 max(MeasuredCode(:))]);
 title(sprintf('Spot Code'));
 set(gca, 'ytick', 1:o.nBP);
 set(gca, 'YTickLabel', o.bpLabels);
+set(gca, 'xtick', 1:o.nRounds+1);
+set(gca, 'XTickLabel', [string(1:o.nRounds),"Gad"]);
 ylabel('Color Channel');
 hold on
 for r=1:o.nRounds
     rectangle('Position',gSquares(r,:),'EdgeColor','r','LineWidth',2,'LineStyle',':')
 end
+rectangle('Position',[8-0.5,o.GadChannel-0.5,1,1],'EdgeColor','k','LineWidth',2.5,'LineStyle','-')
 hold off
 
 subplot(3,1,2)
@@ -225,6 +236,7 @@ if strcmp(click_type,'normal')
     
     %set(get(get(P1(1),'Annotation'),'LegendInformation'),'IconDisplayStyle','off');
     hold on
+    plot(x(PlotIdx),LogProbPlot(PlotIdx)-BackgroundProb(PlotIdx));
     plot(x(PlotIdx),LogProbPlot(PlotIdx),'Color',[0, 0.4470, 0.7410],'LineWidth',0.8);
     xline(f,'-','DisplayName','Spot '+string(SpotNo)+ ' Value','Color','red','LineWidth',1);   %Or xline(x(o.ZeroIndex-1+f))
     hold off

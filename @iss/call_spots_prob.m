@@ -254,7 +254,8 @@ else
     FirstIdx = find(o.HistValues==o.SymmHistValues(1));
     SymmHistCounts(:,:,:) = o.HistCounts(FirstIdx:LastIdx,:,:);
 end
-HistProbs = SymmHistCounts/nPixels;
+%HistProbs = SymmHistCounts/nPixels;
+HistProbs = SymmHistCounts./sum(SymmHistCounts);
 o.HistProbs = (HistProbs+o.alpha)./(1+nBins*o.alpha);
 
 %Get Lambda probability distribution for all genes
@@ -323,5 +324,5 @@ o.pSpotScore = LogProb(:,1)-LogProb(:,2);
 o.pSpotScoreDev = std(LogProb,[],2);
 o.pSpotIntensity = o.get_spot_intensity(o.pSpotCodeNo,o.cSpotColors);
 
-save(fullfile(o.OutputDirectory, 'LookupTable.mat'), 'o', 'LookupTable','-v7.3');
+save(fullfile(o.OutputDirectory, 'LookupTable.mat'),'LookupTable','-v7.3');
 end

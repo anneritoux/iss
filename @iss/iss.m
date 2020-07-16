@@ -282,8 +282,10 @@ classdef iss
         %particular colour channel for hat color channel to be deemed
         %suitable for finding the initial shifts to the anchor round. If
         %all color channels have a tile with less spots than this, an error
-        %is thrown
-        MinSpots = 100;
+        %is thrown.
+        %Also any transforms that have nMatches<MinSpots will be
+        %recalculated in AmendPCR
+        MinSpots = 50;
         
         %FindSpotsSearch.Y,FindSpotsSearch.X are the ranges values of
         %shifts to check when looking for the initial shifts between rounds
@@ -546,17 +548,21 @@ classdef iss
         %ChangedSearch is number of times the search range had to be changed.
         %Outlier is a shift found that was wrong and subsequently changed
         %to the average of all other shifts.
+        %DFailed is D before AmendPCR.
+        %nMatchesFailed is nMatches before AmendPCR.
+        %ErrorFailed is Error before AmendPCR.
         FindSpotsInfo;
         
         %TileCentre is the yx centre of tile, required for transformation.
         TileCentre;
         
-        % A(c): stores the scaling correction for chromatic aberration
-        % found by point cloud registration for color channel c
+        % A(c): stores the mean scaling correction for chromatic aberration
+        % found by point cloud registration for color channel c. This is
+        % only used for those for which PcFailed(t,c,r)==true.
         A;
         
-        % D(3,2,t,r): stores the final affine transform found by point cloud registration
-        % on round r tile t.
+        % D(3,2,t,r,c): stores the final affine transform found by point cloud registration
+        % on tile t, round r, channel c.
         D;
         
         % cc(t,1,r) stores the correlation coefficient for the initial
@@ -571,9 +577,38 @@ classdef iss
         % for tile t, color channel c, round r
         Error;
         
+        % PcFailed(t,c,r): This is a logical array. A value of 1 indicates
+        % that nMatches high enough for the PCR results to be used. For
+        % these images, chromatic aberration will be the mean value of that
+        % colour channel. The shift will be found using an Fft method.
+        PcFailed;
+        
+        
         % nPcCovergedImg is the fraction of images that converged in PCR.
         % Denominator is nTiles*o.nBP*o.nRounds
         nPcCovergedImg;
+        
+        % PcRegLambda is the constant for the regularised PCR. 1 is the
+        % shift scale factor. 2 is the scaling (between colour channels)
+        % scale factor
+        PcRegLambda1 = 9;
+        PcRegLambda2 = 30000;
+        
+        % PcMinSpots is the minimum number of spots to do PCR without
+        % regularization. Below this amount regularisation is used.
+        PcMinSpots = 200;       
+        
+        % If a tile has a chromatic aberration scaling that has an 
+        % absolute deviation of more than PcMaxScaleDev from the median 
+        % for that colour channel and nMatches<PcMinSpotsScaling,
+        % it will be re-evaluated with regularization.
+        PcMaxScaleDev = 0.5e-3;
+        PcMinSpotsScaling = 500;
+        
+        % If a tile has a shift that has an absolute deviation of more than
+        % PcMaxShiftDev pixels from the median for that tile and round, it will be
+        % re-evaluated with regularization.
+        PcMaxShiftDev = 10;
         
         % PcGrad(t,c,r,1) is the gradient of the Y shift with respect to
         % the normalised Y coordinate (from -1 to +1) for tile t, channel
@@ -820,6 +855,32 @@ classdef iss
         %pxSpotCodeNo is the gene found for each spot
         pxSpotCodeNo;
         
+        
+        %% Gad stuff
+        GadChannel = 4;
+        GadRound = 9;
+        GcampChannel = 6;
+        GcampRound = 9;
+        GadReferenceChannel = 6;   %Channel in Gad round to register to
+        
+        GadRawLocalYX;
+        GadRawIsolated;
+        
+        GadInfo;
+        BigGadFile;
+        BigGcampFile;
+        pxLocalTile;    %local tile for pxSpotGlobalYX
+        pxGadColor;     %(s,b) is the intensity of spot pxSpotGlobalYX(s,:)
+                        %in channel b of gad round
+        
+        GadPeakSpots;   %This is 1 for best gene value and 2 for score as match to gad.
+                        %GadPeakSpots(s) refers to cSpotColors(s,:,:)
+        GadPeakColor;   %Intensity in Gad round/Gad channel of SpotGlobalYX. 
+                        %It is zero if not a peak in Gad channel.
+                        %I.e. if GadPeakSpots==0
+        pLocalTile;     %local tile for SpotGlobalYX
+        pGadColor       %(s,b) is the intensity of spot SpotGlobalYX(s,:)
+                        %in channel b of gad round
         
     end
     
