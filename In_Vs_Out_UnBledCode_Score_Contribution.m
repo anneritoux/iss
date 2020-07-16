@@ -1,7 +1,6 @@
 %% Analysis of particular spot to see contribution to final score 
 % from those rounds/channels in Unbled code and those that aren't
-
-SpotNo = 153485;
+SpotNo = 200840;
 SpotColor = o.cSpotColors(SpotNo,:,:);
 
 nCodes = length(o.CharCodes);
@@ -14,9 +13,8 @@ GeneIndex = repelem(1:nCodes,1,o.nRounds*o.nBP);
 Indices = sub2ind(size(LookupTable),SpotIndex,GeneIndex,ChannelIndex,RoundIndex);
 LogProb_rb = reshape(LookupTable(Indices),[o.nRounds*o.nBP,nCodes]);
 
-HistZeroIndex = find(o.SymmHistValues == 0);
-BackgroundIndices = sub2ind(size(o.HistProbs),HistZeroIndex+SpotColor(1,:),gChannelIndex,gRoundIndex);
-BackgroundLogProb_rb = log(o.HistProbs(BackgroundIndices));
+BackgroundIndices = sub2ind(size(o.BackgroundProb),o.ZeroIndex-1+SpotColor(1,:),gChannelIndex,gRoundIndex);
+BackgroundLogProb_rb = log(o.BackgroundProb(BackgroundIndices));
 ProbMatrices = reshape(LogProb_rb',nCodes,o.nBP,o.nRounds)-...
     reshape(BackgroundLogProb_rb,1,o.nBP,o.nRounds);
 
@@ -29,8 +27,10 @@ for g=1:nCodes
     OutCodeMean(g) = sum(sum(ProbMatrix.*~gUnbled))/42.0;
 end
 
+ScaleFactor = 0.5;
+
 GadNo = 22;
-SncgNo = 63;
+SncgNo = 53;
 yyaxis left
 ToPlot = true(nCodes,1);
 ToPlot(GadNo) = false;
@@ -44,9 +44,9 @@ scatter(ones(size(OutCodeMean(ToPlot)))+1,OutCodeMean(ToPlot)*42);
 scatter(2,OutCodeMean(GadNo)*42,200,'x');
 scatter(2,OutCodeMean(SncgNo)*42,200,'s');
 yyaxis left
-scatter(ones(size(OutCodeMean(ToPlot)))+2,InCodeMean(ToPlot)*7+OutCodeMean(ToPlot)*42);
-scatter(3,InCodeMean(GadNo)*7+OutCodeMean(GadNo)*42,200,'x');
-scatter(3,InCodeMean(SncgNo)*7+OutCodeMean(SncgNo)*42,200,'s');
+scatter(ones(size(OutCodeMean(ToPlot)))+2,InCodeMean(ToPlot)*7+ScaleFactor*OutCodeMean(ToPlot)*42);
+scatter(3,InCodeMean(GadNo)*7+ScaleFactor*OutCodeMean(GadNo)*42,200,'x');
+scatter(3,InCodeMean(SncgNo)*7+ScaleFactor*OutCodeMean(SncgNo)*42,200,'s');
 xticks([1,2,3]);
 xlim([0,4]);
 xticklabels({'In Unbled Code';'Not in Unbled Code';'Sum'});

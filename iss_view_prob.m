@@ -213,8 +213,7 @@ if strcmp(click_type,'normal')
     PlotIdx = find(LogProbPlot>min(max(LogProbPlot)*5,-10));    %Only plot in range where prob above certain amount
     PlotIdx = min(PlotIdx):max(PlotIdx);    %So consecutive
     %Get background too
-    HistZeroIndex = find(o.SymmHistValues == 0);
-    BackgroundProb = log(o.HistProbs(HistZeroIndex+x,b,r));
+    BackgroundProb = log(o.BackgroundProb(:,b,r));
     [~,MaxIdx] = max(BackgroundProb);
     BackgroundIdx1 = max(find(BackgroundProb==min(BackgroundProb)&find(BackgroundProb)<MaxIdx))+1;
     BackgroundIdx2 = min(find(BackgroundProb==min(BackgroundProb)&find(BackgroundProb)>MaxIdx))-1;

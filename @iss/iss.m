@@ -730,18 +730,13 @@ classdef iss
         % crosstalk and un-nomalising.
         pBledCodes;
                 
-        %RaylConst is the constant used in the rayleigh distribution for
+        %GammaShape is the shape parameter used in the gamma distribution for
         %the estimated distribution of lambda such that cSpotColors =
         %Lambda*pBledCode
-        RaylConst = 1.0688;
-        
-        %ExpConst is same as above but exponenital distribution used for
-        %all rounds/channels that don't appear in CharCode for each gene.
-        ExpConst = 3.5;
+        GammaShape = 3.0;
         
         %LambdaDist(:,g,b,r) is the probability distribution of lambda for
-        %gene g, channel b and round r. Rayleigh if appear in CharCodes,
-        %Exp otherwise using constants above.
+        %gene g, channel b and round r. Gamma distribution
         LambdaDist;
         
         %ZeroIndex is the index of the 0 value in
@@ -749,17 +744,25 @@ classdef iss
         %Needed to find values in lookup table.
         ZeroIndex;        
         
+        %BackgroundProb(:,b,r) is the reference probability distribution
+        %for visualisation - it is the probability distribution if the bled
+        %code had a value of 1
+        BackgroundProb;
+        
         %pIntensityThresh is the value pSpotIntensity(s) needs to exceed for spot s
-        %to count
+        %to count. The different thresholds apply to different conditions
+        %on other variables - see o.quality_threshold
         pIntensityThresh = 100;
+        pIntensityThresh2 = 50;
         
         %pLogProbThresh is the value pLogProbOverBackground(s) needs to exceed for spot s
         %to count
         pLogProbThresh = 0;
+        pLogProbThresh2 = 0;
         
         %pScoreThresh is the value pSpotScore(s) needs to exceed for spot s
         %to count
-        pScoreThresh = 10;       
+        pScoreThresh = 60;       
         
         %If pSpotScore(s) < pScoreThresh but pSpotScore(s) > pScoreThresh2
         %and has high intensity then will count as spot.
@@ -768,6 +771,11 @@ classdef iss
         %A spot must have pSpotScore(s)+pSpotScoreDev(s) > pDevThresh to
         %count - avoid spots with similar score to all genes.
         pDevThresh = 6;
+        
+        %ScoreScale is the contribution each round/channel not in Unbled
+        %code contributes to LogProbOverBackground compared to each
+        %round/channel in Unbled code
+        ScoreScale = 1;
         
         
         %% variables: spot calling outputs
@@ -780,8 +788,9 @@ classdef iss
         %probability it can be explained by background alone.
         pLogProbOverBackground;        
         
-        %pSpotScore is pLogProb -max(pLogProb(SpotCodeNo~=pSpotCodeNo))
-        pSpotScore;
+        %pSpotScore is for the sorted array pLogProb,
+        %pLogProb(1)-pLogProb(2)
+        pSpotScore;        
         
         %pSpotScoreDev(s) is the standard deviation of the log prob of spot s
         %for all genes
@@ -845,8 +854,13 @@ classdef iss
         %probability it can be explained by background alone.
         pxLogProbOverBackground;        
         
-        %pxSpotScore is pLogProb -max(pLogProb(SpotCodeNo~=pSpotCodeNo))
+        %pxSpotScore is for the sorted array pLogProb,
+        %pxLogProb(1)-pxLogProb(2)
         pxSpotScore;
+        
+        %pxSpotScore2 is for the sorted array pLogProb,
+        %pxLogProb(2)-pxLogProb(3)
+        pxSpotScore2;
         
         %pxSpotScoreDev(s) is the standard deviation of the log prob of spot s
         %for all genes

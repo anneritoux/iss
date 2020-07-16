@@ -263,23 +263,20 @@ x = min(o.cSpotColors(:))-1:max(o.cSpotColors(:))-1;    %subsitiution x=lambda*g
 o.ZeroIndex = find(x==0);     %need when looking up conv values
 o.LambdaDist = zeros(length(x),nCodes,o.nBP,o.nRounds);
 
+fprintf('\nGetting probability distributions for gene   ');
 for GeneNo = 1:nCodes
+    if GeneNo<10
+        fprintf('\b%d',GeneNo);
+    else
+        fprintf('\b\b%d',GeneNo);
+    end
     BledCode = reshape(o.pBledCodes(GeneNo,:),[o.nBP,o.nRounds]);
-    numCharCode = str2double(regexp(cell2mat(o.CharCodes(GeneNo)),'\d','match'))+1;
-
     for b=1:o.nBP
         for r=1:o.nRounds
             g = BledCode(b,r);
-            if numCharCode(r)==b
-                %for b/r in CharCodes, expect non zero lambda.
-                %g always >0 in this case
-                o.LambdaDist(x>0,GeneNo,b,r) = raylpdf(x(x>0)/g,o.RaylConst)/g;
-                o.LambdaDist(:,GeneNo,b,r) = o.LambdaDist(:,GeneNo,b,r)/sum(o.LambdaDist(:,GeneNo,b,r));
-            else
-                %for b/r not in CharCodes, expect approx zero lambda.
-                o.LambdaDist(:,GeneNo,b,r) = (o.ExpConst/2)*exp(-o.ExpConst*abs(x/g))/abs(g);
-                o.LambdaDist(:,GeneNo,b,r) = o.LambdaDist(:,GeneNo,b,r)/sum(o.LambdaDist(:,GeneNo,b,r));
-            end
+            %LambdaDist has mean of 1 i.e. spot code expected to be bledcode
+            o.LambdaDist(x>0,GeneNo,b,r) = gampdf(x(x>0)/g,o.GammaShape,1.0/o.GammaShape);
+            o.LambdaDist(:,GeneNo,b,r) = o.LambdaDist(:,GeneNo,b,r)/sum(o.LambdaDist(:,GeneNo,b,r));
         end
     end
 end
@@ -295,33 +292,54 @@ for b=1:o.nBP
 end
 fprintf('\n');
 
+%Get background Prob using gamma with g=1
+o.BackgroundProb = zeros(length(x),o.nBP,o.nRounds);
+BackgroundGamma = gampdf(x/1.0,o.GammaShape,1.0/o.GammaShape);
+BackgroundGamma = BackgroundGamma/sum(BackgroundGamma);
+for b=1:o.nBP
+    for r=1:o.nRounds
+        o.BackgroundProb(:,b,r) = conv(BackgroundGamma,o.HistProbs(:,b,r),'same');
+    end
+end
+
 %Get log probs for each spot 
 nSpots = size(o.cSpotColors,1);
-LogProb = zeros(nSpots,nCodes);
-BackgroundLogProb = zeros(nSpots,1);
+LogProbOverBackground = zeros(nSpots,nCodes);
 
 gChannelIndex = repmat(1:o.nBP,1,o.nRounds);
 gRoundIndex = repelem(1:o.nRounds,1,o.nBP);
 ChannelIndex = repmat(gChannelIndex,1,nCodes);
 RoundIndex = repmat(gRoundIndex,1,nCodes);
 GeneIndex = repelem(1:nCodes,1,o.nRounds*o.nBP);
-HistZeroIndex = find(o.SymmHistValues == 0);            %As HistProbs is of different length to x
+
+
+LogProbMultiplier = zeros(o.nRounds*o.nBP,nCodes);
+for g=1:nCodes
+    LogProbMultiplier(:,g) = o.UnbledCodes(g,:);
+end
+%How many squares that contribute:
+NormFactor = double(o.nBP*o.nRounds)/double(o.nRounds+o.ScoreScale*(o.nBP*o.nRounds-o.nRounds));  
+%Normalise by this to allow valid comparison
+LogProbMultiplier(LogProbMultiplier==0) = o.ScoreScale;
+LogProbMultiplier = LogProbMultiplier*NormFactor;
+
 
 for s=1:nSpots
     SpotIndex = repmat(o.ZeroIndex-1+o.cSpotColors(s,:),1,nCodes); %-1 due to matlab indexing I think
     Indices = sub2ind(size(LookupTable),SpotIndex,GeneIndex,ChannelIndex,RoundIndex);
-    LogProb(s,:)=sum(reshape(LookupTable(Indices),[o.nRounds*o.nBP,nCodes]));
-    BackgroundIndices = sub2ind(size(o.HistProbs),HistZeroIndex+o.cSpotColors(s,:),gChannelIndex,gRoundIndex);
-    BackgroundLogProb(s) = sum(log(o.HistProbs(BackgroundIndices)));
+    BackgroundIndices = sub2ind(size(o.BackgroundProb),o.ZeroIndex-1+o.cSpotColors(s,:),gChannelIndex,gRoundIndex);
+    BackgroundLogProb = log(o.BackgroundProb(BackgroundIndices));
+    LogProbMatrix = reshape(LookupTable(Indices),[o.nRounds*o.nBP,nCodes]);
+    LogProbOverBackground(s,:) = sum((LogProbMatrix-BackgroundLogProb').*LogProbMultiplier);
 end
-[LogProb,SpotCodeNo] = sort(LogProb,2,'descend');
+[LogProbOverBackground,SpotCodeNo] = sort(LogProbOverBackground,2,'descend');
 
-o.pLogProbOverBackground = LogProb(:,1)-BackgroundLogProb;
+o.pLogProbOverBackground = LogProbOverBackground(:,1);
 o.pSpotCodeNo = SpotCodeNo(:,1);
-o.pSpotScore = LogProb(:,1)-LogProb(:,2);
+o.pSpotScore = LogProbOverBackground(:,1)-LogProbOverBackground(:,2);
 %Store deviation in spot scores - can rule out matches based on a low
 %deviation.
-o.pSpotScoreDev = std(LogProb,[],2);
+o.pSpotScoreDev = std(LogProbOverBackground,[],2);
 o.pSpotIntensity = o.get_spot_intensity(o.pSpotCodeNo,o.cSpotColors);
 
 save(fullfile(o.OutputDirectory, 'LookupTable.mat'),'LookupTable','-v7.3');

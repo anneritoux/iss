@@ -43,7 +43,7 @@ if nargin<6 || isempty(SpotNo)
     CrossHairColor = [1,1,1];   %Make white as black background
     xy = ginput_modified(1,CrossHairColor);
 else
-    xy = o.SpotGlobalYX(SpotNo,[2,1]);
+    xy = o.pxSpotGlobalYX(SpotNo,[2,1]);
 end
 
 %% Get in spot color at this position
@@ -75,14 +75,13 @@ gRoundIndex = repelem(1:o.nRounds,1,o.nBP);
 ChannelIndex = repmat(gChannelIndex,1,nCodes);
 RoundIndex = repmat(gRoundIndex,1,nCodes);
 GeneIndex = repelem(1:nCodes,1,o.nRounds*o.nBP);
-HistZeroIndex = find(o.SymmHistValues == 0);
 
 SpotIndex = repmat(o.ZeroIndex-1+SpotColor(1,:),1,nCodes); %-1 due to matlab indexing I think
 Indices = sub2ind(size(LookupTable),SpotIndex,GeneIndex,ChannelIndex,RoundIndex);
 LogProb_rb = reshape(LookupTable(Indices),[o.nRounds*o.nBP,nCodes]);
 LogProbAll = sum(LogProb_rb);
-BackgroundIndices = sub2ind(size(o.HistProbs),HistZeroIndex+SpotColor(1,:),gChannelIndex,gRoundIndex);
-BackgroundLogProb_rb = log(o.HistProbs(BackgroundIndices));
+BackgroundIndices = sub2ind(size(o.BackgroundProb),o.ZeroIndex-1+SpotColor(1,:),gChannelIndex,gRoundIndex);
+BackgroundLogProb_rb = log(o.BackgroundProb(BackgroundIndices));
 BackgroundLogProb = sum(BackgroundLogProb_rb);
 S.ProbMatrices = reshape(LogProb_rb',nCodes,o.nBP,o.nRounds)-...
     reshape(BackgroundLogProb_rb,1,o.nBP,o.nRounds);
@@ -161,6 +160,8 @@ S.MaxAllColors = max(o.cSpotColors(:));
 S.LambdaDist = o.LambdaDist;
 S.SymmHistValues = o.SymmHistValues;
 S.HistProbs = o.HistProbs;
+S.BackgroundProb = o.BackgroundProb;
+S.ZeroIndex = o.ZeroIndex;
 
 
 try
@@ -271,8 +272,7 @@ if strcmp(click_type,'normal')
     PlotIdx = find(LogProbPlot>min(max(LogProbPlot)*5,-10));    %Only plot in range where prob above certain amount
     PlotIdx = min(PlotIdx):max(PlotIdx);    %So consecutive
     %Get background too
-    HistZeroIndex = find(S.SymmHistValues == 0);
-    BackgroundProb = log(S.HistProbs(HistZeroIndex+x,b,r));
+    BackgroundProb = log(S.BackgroundProb(:,b,r));
     [~,MaxIdx] = max(BackgroundProb);
     BackgroundIdx1 = max(find(BackgroundProb==min(BackgroundProb)&find(BackgroundProb)<MaxIdx))+1;
     BackgroundIdx2 = min(find(BackgroundProb==min(BackgroundProb)&find(BackgroundProb)>MaxIdx))-1;
@@ -356,7 +356,6 @@ for r=1:S.nRounds
         S.gSquares(r,:) = [r-0.5,find(gUnbled(:,r,:)==1)-0.5,1,1];
     end
 end
-
 ax_index = 1;
 for ax = [S.ax1,S.ax2,S.ax3]
     if ax_index<3
@@ -369,7 +368,7 @@ for ax = [S.ax1,S.ax2,S.ax3]
         rectangle(ax,'Position',S.gSquares(r,:),'EdgeColor',ax_color,'LineWidth',2,'LineStyle',':');
     end
     hold off
-    ax_index = ax_index+1;
+    
 end
 S = getFigureTitle(S);
 drawnow
