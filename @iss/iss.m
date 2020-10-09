@@ -777,8 +777,14 @@ classdef iss
         
         %ScoreScale is the contribution each round/channel not in Unbled
         %code contributes to LogProbOverBackground compared to each
-        %round/channel in Unbled code
-        ScoreScale = 1;
+        %round/channel in Unbled code.
+        %ScoreScale = 0 means only the rounds/channels in the unbled code
+        %contribute i.e. 7.
+        %ScoreScale = 1 means all rounds/channels contribute i.e. 49.
+        %ScoreScale = 0.5 means all rounds/channels contribute but each
+        %round/channel in the unbled code contributes twice as much as
+        %those not in the unbled code. 
+        ScoreScale = 0;
         
         
         %% variables: spot calling outputs
