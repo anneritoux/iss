@@ -136,7 +136,7 @@ for r=1:o.nRounds
             %I{z} = bfGetPlane(bfreader, iPlane);
         end        
         % focus stacking
-        BaseImSm = o.fstack_modified(I);
+        BaseImSm = o.fstack_modified(I(o.FirstZPlane:end));
         %BaseImSm = BaseImSm(y1:y2,x1:x2);
         
         h = subplot(o.nBP, o.nRounds, (b-1)*o.nRounds + r);
