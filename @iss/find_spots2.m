@@ -210,7 +210,7 @@ clearvars x;
 save(fullfile(o.OutputDirectory, 'FindSpotsWorkspace.mat'), 'o', 'AllBaseLocalYX');
 
 if strcmpi(o.PcImageMatchesThresh, 'auto')
-    o.PcImageMatchesThresh = length(NonemptyTiles);
+    o.PcImageMatchesThresh = length(NonemptyTiles)*5;
 end
 
 if ~isnumeric(o.MinPCMatchFract) || o.MinPCMatchFract>=1
