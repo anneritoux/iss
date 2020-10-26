@@ -112,7 +112,7 @@ end
             
             %New filter
             if strcmpi(o.ExtractR1, 'auto')
-                o.ExtractR1 = round(0.5/pixelsize);
+                o.ExtractR1 = round(0.5/o.XYpixelsize);
             end
             if strcmpi(o.ExtractR2, 'auto')
                 o.ExtractR2 = o.ExtractR1*2;
@@ -132,7 +132,7 @@ end
         
         %Set top hat structuring elements
         if strcmpi(o.DapiR,'auto')
-            o.DapiR = round(8/pixelsize);
+            o.DapiR = round(8.0/o.XYpixelsize);
         end
         DapiSE = strel('disk', o.DapiR);
         
