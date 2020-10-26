@@ -206,7 +206,6 @@ end
                 %IFS = ifftn(Final_FT);
                 
                 %I = ifftn(Norm_FT);
-                I = single(padarray(I,(size(SE)-1)/2,'replicate','both'));
                 
                 
                 
@@ -215,6 +214,7 @@ end
                     IFS = uint16(imtophat(I, DapiSE));
                     clearvars I  %Free up memory
                 else
+                    I = single(padarray(I,(size(SE)-1)/2,'replicate','both'));
                     IFS = convn(I,SE,'valid'); 
                     clearvars I  %Free up memory
                     %Finds o.ExtractScale from first image and uses this
