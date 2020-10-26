@@ -1,9 +1,20 @@
-%% extract and filter
+%% Template of a pipeline that links together all the different processes 
+%in the correct order.
+%The first two sections below will be different for each experiment so
+%should be checked before each run.
 
-%parameters
+%% Parameters that should be checked before each run
+%CHECK BEFORE EACH RUN
 o = iss;
-o.nRounds = 7;
-o.nExtraRounds = 1;         %Treat Anchor channel as extra round
+o.ReferenceRound = 8;           %Round that contains Dapi image
+o.AnchorChannel =  ;            %Channel that has most spots in o.AnchorRound
+o.DapiChannel = 1;              %Channel in o.AnchorRound that contains Dapi images
+o.InitialShiftChannel = 4;      %Channel to use to find initial shifts between rounds
+o.RawFileExtension = '.nd2';    %Format of raw data
+o.LogToFile = 1;                %Set to 1 if you want to save command window to txt file, else set to 0.
+
+%% File Names
+%CHECK BEFORE EACH RUN
 o.InputDirectory = '...\Experiment1\raw_data';     %Folder path of raw data
 
 %FileBase{r} is the file name of the raw data of round r in o.InputDirectory
@@ -17,13 +28,25 @@ o.FileBase{6} = 'round5';
 o.FileBase{7} = 'round6';
 o.FileBase{8} = 'anchor';    %Make sure the last round is the anchor
 
-o.RawFileExtension = '.nd2';
 o.TileDirectory = '...\Experiment1\tiles'; 
-o.DapiChannel = 1;
-o.AnchorChannel = ;     %Channel in anchor round with the most spots
-o.ReferenceRound = 8;
+o.OutputDirectory = '...\Experiment1\output';  
+%Codebook is a text file containing 2 columns - 1st is the gene name. 2nd is
+%the code, length o.nRounds and containing numbers in the range from 0 to o.nBP-1.
+o.CodeFile = '\\zserver\Data\ISS\codebook_73gene_6channels_2col.txt';
+
+%% Logging
+if o.LogToFile
+    if isempty(o.LogFile)
+        o.LogFile = fullfile(o.OutputDirectory,'Log.txt');
+    end
+end
+
+%% extract and filter
+
+%parameters
+o.nRounds = 7;
+o.nExtraRounds = 1;         %Treat Anchor channel as extra round
 o.TileSz = 2048;
-o.OutputDirectory = '...\Experiment1\output'; 
 o.bpLabels = {'0', '1', '2', '3','4','5','6'}; %order of bases
 
 %These specify the dimensions of the filter. R1 should be approximately the
@@ -45,11 +68,12 @@ o.MaxWaitTime1 = 60;      %Less time for round 1 incase name is wrong
 o.MaxWaitTime = 21600;  
 
 %run code
-try
-    o = o.extract_and_filter;
-catch
-    o = o.extract_and_filter_NoGPU;
-end
+% try
+%     o = o.extract_and_filter;
+% catch
+%     o = o.extract_and_filter_NoGPU;
+% end
+o = o.extract_and_filter_NoGPU;
 save(fullfile(o.OutputDirectory, 'oExtract'), 'o', '-v7.3');
 
 %% register
@@ -94,7 +118,6 @@ o.UseRounds = 1:o.nRounds;
 o.FirstBaseChannel = 1;
 
 %Search parameters
-o.InitialShiftChannel = 4;      %Channel to use to find initial shifts between rounds
 o.FindSpotsMinScore = 'auto';     
 o.FindSpotsStep = [5,5,2];
 %FindSpotsSearch can either be a 1x1 struct or a o.nRounds x 1 cell of
@@ -113,11 +136,6 @@ o = o.find_spots2;
 save(fullfile(o.OutputDirectory, 'oFind_spots'), 'o', '-v7.3');
 
 %% call spots
-
-%parameters
-%Codebook is a text file containing 2 columns - 1st is the gene name. 2nd is
-%the code, length o.nRounds and containing numbers in the range from 0 to o.nBP-1.
-o.CodeFile = '\\zserver\Data\ISS\codebook_73gene_6channels_2col.txt';
 
 %run code
 o.CallSpotsCodeNorm = 'WholeCode';      %Or 'Round'

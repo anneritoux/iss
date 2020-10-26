@@ -2,20 +2,13 @@ function o = extract_and_filter_NoGPU(o)
 % create tiff files for each tile that are top-hat filtered versions of
 % original czi files
 
+%% Logging
+if o.LogToFile
+    diary(o.LogFile);
+    cleanup = onCleanup(@()diary('off'));
+end
+%%
     o.TileFiles = cell(o.nRounds+o.nExtraRounds,1,1,1); % 1,1,1 because we don't yet know how many tiles
-    
-    %New filter
-    h = -hanning(o.ExtractR2*2+1);
-    h = -h/sum(h);
-    h(o.ExtractR2+1-o.ExtractR1:o.ExtractR2+1+o.ExtractR1) = ...
-        h(o.ExtractR2+1-o.ExtractR1:o.ExtractR2+1+o.ExtractR1)+hanning(o.ExtractR1*2+1)/sum(hanning(o.ExtractR1*2+1));
-    SE = ftrans2(h');
-    SE = single(SE);
-%     h2D = ftrans2(h');
-%     hzdirection = hanning(3);
-%     hzdirection = reshape(hzdirection,[1,1,3]);
-%     SE = h2D.*hzdirection;
-
     AnchorChannelsToUse = [o.DapiChannel,o.AnchorChannel];
     
     
@@ -57,8 +50,12 @@ function o = extract_and_filter_NoGPU(o)
         end
 
         % get some basic image metadata
-        [nSeries, nSerieswPos, nChannels, o.nZ, xypos, o.XYpixelsize,o.Zpixelsize] = ...
+        [nSeries, nSerieswPos, nChannels, nZ, xypos, o.XYpixelsize,o.Zpixelsize] = ...
             get_ome_tilepos(bfreader);
+        if strcmpi(o.nZ, 'auto')
+            o.nZ = nZ;
+        end
+        
         if isempty(xypos) || size(xypos, 1)==1
             if r == 1
                 warning('first round xypos empty - using values from initial manual input')
@@ -112,7 +109,32 @@ function o = extract_and_filter_NoGPU(o)
                 TilePosX = repmat([flip(1:MaxX),1:MaxX],1,ceil(MaxY/2));
                 TilePosYX(1:nSeries,2) = TilePosX(1:nSeries);
             end
+            
+            %New filter
+            if strcmpi(o.ExtractR1, 'auto')
+                o.ExtractR1 = round(0.5/pixelsize);
+            end
+            if strcmpi(o.ExtractR2, 'auto')
+                o.ExtractR2 = o.ExtractR1*2;
+            end
+            h = -hanning(o.ExtractR2*2+1);
+            h = -h/sum(h);
+            h(o.ExtractR2+1-o.ExtractR1:o.ExtractR2+1+o.ExtractR1) = ...
+                h(o.ExtractR2+1-o.ExtractR1:o.ExtractR2+1+o.ExtractR1)+hanning(o.ExtractR1*2+1)/sum(hanning(o.ExtractR1*2+1));
+            SE = ftrans2(h');
+            SE = single(SE);
+            %     h2D = ftrans2(h');
+            %     hzdirection = hanning(3);
+            %     hzdirection = reshape(hzdirection,[1,1,3]);
+            %     SE = h2D.*hzdirection;
+            
         end
+        
+        %Set top hat structuring elements
+        if strcmpi(o.DapiR,'auto')
+            o.DapiR = round(8/pixelsize);
+        end
+        DapiSE = strel('disk', o.DapiR);
         
         o.TilePosYXC = zeros(nSerieswPos*nChannels,3);
 
@@ -120,16 +142,20 @@ function o = extract_and_filter_NoGPU(o)
         fName = cell(nSerieswPos*nChannels,1);
         
         Index = 1;
+        ChannelOrder = 1:nChannels;        
         %parfor t = 1:nSerieswPos  
         for t = 1:nSerieswPos  
-                       
+            if strcmpi(o.ExtractScale, 'auto')
+                %So get scale value from a good channel
+                ChannelOrder([1,o.ExtractScaleChannel]) = ChannelOrder([o.ExtractScaleChannel,1]);
+            end                       
             % a new reader per worker
             bfreader = javaObject('loci.formats.Memoizer', bfGetReader(), 0);
             % use the memo file cached before
             bfreader.setId(imfile);
 
             bfreader.setSeries(scene*t-1);
-            for c = 1:nChannels
+            for c = ChannelOrder
                 tic
                 fName{Index} = fullfile(o.TileDirectory, ...
                     [o.FileBase{r}, '_t', num2str(t),'c', num2str(c), '.tif']);  
@@ -181,38 +207,42 @@ function o = extract_and_filter_NoGPU(o)
                 
                 %I = ifftn(Norm_FT);
                 I = single(padarray(I,(size(SE)-1)/2,'replicate','both'));
-                IFS = convn(I,SE,'valid'); 
-                clearvars I  %Free up memory
+                
+                
                 
                 %Scaling so fills uint16 range.
-                if c == o.DapiChannel && r == o.ReferenceRound  
-                    if strcmpi(o.DapiScale, 'auto')
-                        o.DapiScale = 10000/max(IFS(:));
-                    end
-                    IFS = IFS*o.DapiScale;
+                if c == o.DapiChannel && r == o.ReferenceRound
+                    IFS = uint16(imtophat(I, DapiSE));
+                    clearvars I  %Free up memory
                 else
+                    IFS = convn(I,SE,'valid'); 
+                    clearvars I  %Free up memory
                     %Finds o.ExtractScale from first image and uses this
                     %value for the rest
                     if strcmpi(o.ExtractScale, 'auto')
-                        o.ExtractScale = 30000/max(IFS(:));
+                        ExtractScale = o.ExtractScaleNorm/max(IFS(:));
+                        fprintf('Extract Scale is %.2f\n', ExtractScale);
+                        save(fullfile(OutputDirectory, ['ExtractScaleValue',...
+                            datestr(datetime('now'),'dd-mm-yy HH-MM'),'.mat']),...
+                            'ExtractScale', '-v7.3');
+                        o.ExtractScale = ExtractScale;
                     end
-                    IFS = IFS*o.ExtractScale;
-                    
+                    IFS = IFS*o.ExtractScale;                    
                     %Determine auto thresholds
                     o.AutoThresh(t,c,r) = median(abs(IFS(:)))*o.AutoThreshMultiplier;
+                    %Add o.TilePixelValueShift so keep negative pixels for background analysis
+                                                         
+                    if r ~= o.ReferenceRound
+                        %Get histogram data
+                        IFS = int32(IFS);
+                        %AbridgedBaseIm = IFS(:,:,8:15);
+                        o.HistCounts(:,c,r) = o.HistCounts(:,c,r)+histc(IFS(:),o.HistValues);
+                    end
+                    IFS = uint16(IFS+o.TilePixelValueShift);
                 end
-                
-                if r ~= o.ReferenceRound  
-                    %Get histogram data
-                    IFS = int32(IFS);
-                    %AbridgedBaseIm = IFS(:,:,8:15);
-                    o.HistCounts(:,c,r) = o.HistCounts(:,c,r)+histc(IFS(:),o.HistValues);
-                end
-                
                 
                 %Append each z plane to same tiff image
-                %Add o.TilePixelValueShift so keep negative pixels for background analysis
-                IFS = uint16(IFS+o.TilePixelValueShift);   
+
                 %IFS = uint16(IFS + o.TilePixelValueShift);
                 for z = 1:o.nZ
                     imwrite(IFS(:,:,z),... 

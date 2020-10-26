@@ -14,7 +14,10 @@
 
 classdef iss
     properties
-        %% interactive graphics mode. 1 means some, 2 means a lot.
+        %% LogToFile = 1 if you want command window output to file
+        LogToFile = 1;
+        
+        % interactive graphics mode. 1 means some, 2 means a lot.
         Graphics = 1;
         
         % region to show during cell calling
@@ -27,6 +30,9 @@ classdef iss
         CellCallDiagnosisPair = [];
         
         %% parameters: file locations
+        %LogFile is where command window log output to
+        LogFile;
+        
         % where the input czi files are kept
         InputDirectory;
         
@@ -57,12 +63,13 @@ classdef iss
         % R1 and R2 is negative. Overall sums up to 0. R1 should be the
         % approximate radius of spot. R2 should be such that between 
         % R1 and R2 there is a dark region.
-        ExtractR1 = 3;
-        ExtractR2 = 25;
+        ExtractR1 = 'auto';        %3;
+        ExtractR2 = 'auto';        %25;
         
         % DapiR is the same as above but is applied to the Dapi image so
         % should be the size of the Dapi spots. HAVN'T CHECKED THE FILTER
         % FOR THE DAPI IMAGE YET
+        DapiR = 'auto';
         DapiR1YX = 20;
         DapiR1Z = 9;
         DapiR2YX = 40;
@@ -73,6 +80,10 @@ classdef iss
         % the decimal points, should multiply image so max pixel number is
         % in the 10,000s (less than 65,536). If 'auto', it sets to
         % 10,000/max(Tile 1 round 1 colour channel 1).
+        % if auto, ExtractScale = ExtractScaleNorm/max(image(:)) where
+        % image is ExtractScaleChannel of round 1, tile 1. 
+        ExtractScaleNorm = 35000;
+        ExtractScaleChannel = 5;
         ExtractScale = 'auto';
         %ExtractScale = 5*10^7;
         

@@ -1,8 +1,17 @@
 function o = extract_and_filter(o)
+
+%% So if no Parallel Computing Toolbox, fails straight away
+GPU_test = gpuArray([1]);
+
+%% Logging
+if o.LogToFile
+    diary(o.LogFile);
+    cleanup = onCleanup(@()diary('off'));
+end
+%%
 % create tiff files for each tile that are top-hat filtered versions of
 % original czi files
 % This uses a GPU for speed
-    GPU_test = gpuArray([1]);       %So if no Parallel Computing Toolbox, fails straight away
     o.TileFiles = cell(o.nRounds+o.nExtraRounds,1,1,1); % 1,1,1 because we don't yet know how many tiles
     
     %New filter
