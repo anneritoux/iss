@@ -63,6 +63,9 @@ o.DapiR = 'auto';
 o.ExtractScale = 'auto';
 o.TilePixelValueShift = 15000;
 
+%1:o.nZ will be the z planes read in for each imaging round.
+o.nZ = 'auto';
+
 %Max time (seconds) to wait for raw .nd2 files to be obtained
 o.MaxWaitTime1 = 60;      %Less time for round 1 incase name is wrong
 o.MaxWaitTime = 21600;  

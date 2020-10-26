@@ -446,7 +446,7 @@ classdef iss
         UseRounds;
         
         %nZ is the number of Z planes per tile
-        nZ;
+        nZ = 'auto';
         
         %pixel sizes are different in the 2 directions, need to consider
         %when filtering.
