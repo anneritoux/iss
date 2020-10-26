@@ -52,16 +52,15 @@ o.bpLabels = {'0', '1', '2', '3','4','5','6'}; %order of bases
 
 %These specify the dimensions of the filter. R1 should be approximately the
 %size of the spot in the respective direction and R2 should be double this.
-o.ExtractR1 = 3;
-o.ExtractR2 = 25;           %NOT SURE ABOUT THIS. IN 2D MUCH BETTER WITH 6
+o.ExtractR1 = 'auto';
+o.ExtractR2 = 'auto';           %NOT SURE ABOUT THIS. IN 2D MUCH BETTER WITH 6
+o.DapiR = 'auto';
+%o.DapiR1YX = 20;
+%o.DapiR1Z = 9;
+%o.DapiR2YX = 40;
+%o.DapiR2Z = 18;
 
-o.DapiR1YX = 20;
-o.DapiR1Z = 9;
-o.DapiR2YX = 40;
-o.DapiR2Z = 18;
-
-o.ExtractScale = 2;
-o.DapiScale = 10;
+o.ExtractScale = 'auto';
 o.TilePixelValueShift = 15000;
 
 %Max time (seconds) to wait for raw .nd2 files to be obtained
