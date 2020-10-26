@@ -10,6 +10,7 @@ o.ReferenceRound = 8;           %Round that contains Dapi image
 o.AnchorChannel =  ;            %Channel that has most spots in o.AnchorRound
 o.DapiChannel = 1;              %Channel in o.AnchorRound that contains Dapi images
 o.InitialShiftChannel = 4;      %Channel to use to find initial shifts between rounds
+o.ExtractScaleChannel = 5;		%Channel which is used to get scaling for imaging rounds.
 o.RawFileExtension = '.nd2';    %Format of raw data
 o.LogToFile = 1;                %Set to 1 if you want to save command window to txt file, else set to 0.
 
