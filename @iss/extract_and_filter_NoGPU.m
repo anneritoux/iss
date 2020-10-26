@@ -83,6 +83,12 @@ end
                 o.HistValues = -o.TilePixelValueShift:1:2^16-o.TilePixelValueShift;  %Entire range of possible pixel values
                 o.HistCounts = zeros(length(o.HistValues),nChannels,o.nRounds);
             end
+            if isempty(o.nPixelsOutsideTiffRange)
+                o.nPixelsOutsideTiffRange = zeros(nSerieswPos,nChannels,o.nRounds+o.nExtraRounds);
+            end
+            if isempty(o.PixelsOutsideTiffRangeExtractScale)
+                o.PixelsOutsideTiffRangeExtractScale = nan(nSerieswPos,nChannels,o.nRounds+o.nExtraRounds);
+            end
             
             % find x and y grid spacing as median of distances that are about
             % right
@@ -188,69 +194,103 @@ end
 %                         SE = get_3DSE(o.ExtractR1YX,o.ExtractR1Z,o.ExtractR2YX,o.ExtractR2Z);
 %                 end
 
-                I = zeros(o.TileSz,o.TileSz,o.nZ); 
-                for z = 1:o.nZ
-                    iPlane = bfreader.getIndex(z-1, c-1, 0)+1;
-                    I(:,:,z) = bfGetPlane(bfreader, iPlane);
-                end       
-                
-                %Make noise white first by divding amplitude of FT
-                
-                %FT = fftn(I);
-                %Norm_FT = FT ./ abs(FT);
-                %filter = fspecial3('gaussian',size(I),2);%DESCRIBE BETTER!!!!
-                %Shiftfilter = fftshift(filter);     %Shift for FT so centered on 0
-                %FT_filter = fftn(Shiftfilter);          
-                %NormFT_filter = FT_filter ./ abs(FT);
-                %Final_FT = Norm_FT .* NormFT_filter;
-                %IFS = ifftn(Final_FT);
-                
-                %I = ifftn(Norm_FT);
-                
-                
-                
-                %Scaling so fills uint16 range.
-                if c == o.DapiChannel && r == o.ReferenceRound
-                    IFS = uint16(imtophat(I, DapiSE));
-                    clearvars I  %Free up memory
+                if strcmpi(o.ExtractScale, 'auto') && (t>1 || c~=ChannelOrder(1) || r>1) && ~(r==o.ReferenceRound && c == o.DapiChannel)
+                    error(['Some tiles in imaging rounds already exist, but o.ExtractScale = auto.'...
+                        '\nThis will result in different scalings used for different tiles.'...
+                        '\nIf tiles up to this point were obtained with a manual value of o.ExtractScale,'...
+                        '\nset o.ExtractScale to this value and rerun.'...
+                        '\nIf tiles up to this point were obtained with auto value,'...
+                        'delete tile %d in round %d, channel %d and rerun, tile location:\n%s.'],...
+                        1,1,ChannelOrder(1),fName{1});
                 else
-                    I = single(padarray(I,(size(SE)-1)/2,'replicate','both'));
-                    IFS = convn(I,SE,'valid'); 
-                    clearvars I  %Free up memory
-                    %Finds o.ExtractScale from first image and uses this
-                    %value for the rest
-                    if strcmpi(o.ExtractScale, 'auto')
-                        ExtractScale = o.ExtractScaleNorm/max(IFS(:));
-                        fprintf('Extract Scale is %.2f\n', ExtractScale);
-                        save(fullfile(o.OutputDirectory, ['ExtractScaleValue',...
-                            datestr(datetime('now'),'dd-mm-yy HH-MM'),'.mat']),...
-                            'ExtractScale', '-v7.3');
-                        o.ExtractScale = ExtractScale;
-                    end
-                    IFS = IFS*o.ExtractScale;                    
-                    %Determine auto thresholds
-                    o.AutoThresh(t,c,r) = median(abs(IFS(:)))*o.AutoThreshMultiplier;
-                    %Add o.TilePixelValueShift so keep negative pixels for background analysis
-                                                         
-                    if r ~= o.ReferenceRound
-                        %Get histogram data
-                        IFS = int32(IFS);
-                        %AbridgedBaseIm = IFS(:,:,8:15);
-                        o.HistCounts(:,c,r) = o.HistCounts(:,c,r)+histc(IFS(:),o.HistValues);
-                    end
-                    IFS = uint16(IFS+o.TilePixelValueShift);
-                end
-                
-                %Append each z plane to same tiff image
 
-                %IFS = uint16(IFS + o.TilePixelValueShift);
-                for z = 1:o.nZ
-                    imwrite(IFS(:,:,z),... 
+                    I = zeros(o.TileSz,o.TileSz,o.nZ);
+                    for z = 1:o.nZ
+                        iPlane = bfreader.getIndex(z-1, c-1, 0)+1;
+                        I(:,:,z) = bfGetPlane(bfreader, iPlane);
+                    end
+
+                    %Make noise white first by divding amplitude of FT
+
+                    %FT = fftn(I);
+                    %Norm_FT = FT ./ abs(FT);
+                    %filter = fspecial3('gaussian',size(I),2);%DESCRIBE BETTER!!!!
+                    %Shiftfilter = fftshift(filter);     %Shift for FT so centered on 0
+                    %FT_filter = fftn(Shiftfilter);
+                    %NormFT_filter = FT_filter ./ abs(FT);
+                    %Final_FT = Norm_FT .* NormFT_filter;
+                    %IFS = ifftn(Final_FT);
+
+                    %I = ifftn(Norm_FT);
+
+
+                    %Scaling so fills uint16 range.
+                    if c == o.DapiChannel && r == o.ReferenceRound
+                        IFS = uint16(imtophat(I, DapiSE));
+                        clearvars I  %Free up memory
+                    else
+                        I = single(padarray(I,(size(SE)-1)/2,'replicate','both'));
+                        IFS = convn(I,SE,'valid');
+                        clearvars I  %Free up memory
+                        %Finds o.ExtractScale from first image and uses this
+                        %value for the rest
+                        if strcmpi(o.ExtractScale, 'auto')
+                            ExtractScale = o.ExtractScaleNorm/max(IFS(:));
+                            fprintf('Extract Scale is %.2f\n', ExtractScale);
+                            save(fullfile(o.OutputDirectory, ['ExtractScaleValue',...
+                                datestr(datetime('now'),'dd-mm-yy HH-MM'),'.mat']),...
+                                'ExtractScale', '-v7.3');
+                            o.ExtractScale = ExtractScale;
+                        end
+                        IFS = IFS*o.ExtractScale;
+                        %Determine auto thresholds
+                        o.AutoThresh(t,c,r) = median(abs(IFS(:)))*o.AutoThreshMultiplier;
+                        %Add o.TilePixelValueShift so keep negative pixels for background analysis
+
+                        if r ~= o.ReferenceRound
+                            %Get histogram data
+                            IFS = int32(IFS);
+                            %AbridgedBaseIm = IFS(:,:,8:15);
+                            o.HistCounts(:,c,r) = o.HistCounts(:,c,r)+histc(IFS(:),o.HistValues);
+                        end
+                        IFS = IFS+o.TilePixelValueShift;
+                        nPixelsOutsideRange = sum(IFS(:)>uint16(inf));
+                        if nPixelsOutsideRange>o.nPixelsOutsideTiffRangeThresh
+                            MaxValue = double((max(IFS(IFS>uint16(inf)))-o.TilePixelValueShift))/o.ExtractScale;
+                            NewScaling = double(uint16(inf))/MaxValue;
+                            o.nPixelsOutsideTiffRange(t,c,r) = nPixelsOutsideRange;
+                            o.PixelsOutsideTiffRangeExtractScale(t,c,r) = NewScaling;
+                            MaxValue = double((max(IFS(IFS>uint16(inf)))-o.TilePixelValueShift))/o.ExtractScale;
+                            NewScaling = double(uint16(inf))/MaxValue;
+                            o.nPixelsOutsideTiffRange(t,c,r) = nPixelsOutsideRange;
+                            o.PixelsOutsideTiffRangeExtractScale(t,c,r) = NewScaling;
+                            ErrorFile = fullfile(o.OutputDirectory, ['oExtract-Error_with_tile',num2str(t),'_round',num2str(r)]);
+                            save(ErrorFile, 'o', '-v7.3');
+                            error(['Round %d, tile %d, channel %d: %d pixels have reached limit of uint16 range.'...
+                                '\nCurrent value of o.ExtractScale = %.4f is too high.'...
+                                'Needs to be below %.4f.\nDelete all tiles (except DAPI) and run again with o.ExtractScale = %.4f.'...
+                                '\nProgress up to this point saved as:\n%s.mat'],...
+                                r,t,c,nPixelsOutsideRange,o.ExtractScale,NewScaling,0.85*NewScaling,ErrorFile);
+                        elseif nPixelsOutsideRange>0
+                            o.nPixelsOutsideTiffRange(t,c,r) = nPixelsOutsideRange;
+                            MaxValue = double((max(IFS(IFS>uint16(inf)))-o.TilePixelValueShift))/o.ExtractScale;
+                            o.PixelsOutsideTiffRangeExtractScale(t,c,r) = double(uint16(inf))/MaxValue;
+                            warning('Round %d, tile %d, channel %d: %d pixels have reached limit of uint16 range',...
+                                r,t,c,nPixelsOutsideRange);
+                        end
+                    end
+
+                    %Append each z plane to same tiff image
+
+                    %IFS = uint16(IFS + o.TilePixelValueShift);
+                    IFS = uint16(IFS);
+                    for z = 1:o.nZ
+                        imwrite(IFS(:,:,z),...
                             fullfile(o.TileDirectory,...
                             [o.FileBase{r}, '_t', num2str(t),'c', num2str(c), '.tif']),...
                             'tiff', 'writemode', 'append');
+                    end
                 end
-                
 
                 o.TilePosYXC(Index,:) = [TilePosYX(t,:),c];          %Think first Z plane is the highest
                 o.TileFiles{r,o.TilePosYXC(Index,1), o.TilePosYXC(Index,2),o.TilePosYXC(Index,3)} = fName{Index};
