@@ -140,6 +140,7 @@ classdef iss
         
         % fraction of point cloud matches needed to count an overlap
         MinPCMatchFract = 0.1; 
+        MaxPCMatchThresh = 500;    %required matches can't be greater than this.
         
         % If the number of images (Total number of images =
         % nTiles*nBP*nRounds) with nMatches < MinPCMatches exceeds
