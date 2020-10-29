@@ -140,6 +140,7 @@ classdef iss
         
         % fraction of point cloud matches needed to count an overlap
         MinPCMatchFract = 0.1; 
+        MaxPCMatchThresh = 500;    %required matches can't be greater than this.         
         
         % If the number of images (Total number of images =
         % nTiles*nBP*nRounds) with nMatches < MinPCMatches exceeds
@@ -777,14 +778,8 @@ classdef iss
         
         %ScoreScale is the contribution each round/channel not in Unbled
         %code contributes to LogProbOverBackground compared to each
-        %round/channel in Unbled code.
-        %ScoreScale = 0 means only the rounds/channels in the unbled code
-        %contribute i.e. 7.
-        %ScoreScale = 1 means all rounds/channels contribute i.e. 49.
-        %ScoreScale = 0.5 means all rounds/channels contribute but each
-        %round/channel in the unbled code contributes twice as much as
-        %those not in the unbled code. 
-        ScoreScale = 0;
+        %round/channel in Unbled code
+        ScoreScale = 1;
         
         
         %% variables: spot calling outputs
