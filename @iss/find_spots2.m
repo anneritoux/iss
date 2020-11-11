@@ -45,6 +45,9 @@ end
 %% basic variables
 rr = o.ReferenceRound;
 NonemptyTiles = find(~o.EmptyTiles)';
+if size(NonemptyTiles,2)==1
+    NonemptyTiles = NonemptyTiles';
+end
 
 [nY, nX] = size(o.EmptyTiles);
 nTiles = nY*nX;
@@ -135,6 +138,9 @@ if ~isempty(BadTiles)
     warning('Setting tiles %d off as have too few spots',BadTiles);
     o.EmptyTiles(BadTiles) = 1;
     NonemptyTiles = find(~o.EmptyTiles)';
+    if size(NonemptyTiles,2)==1
+        NonemptyTiles = NonemptyTiles';
+    end
 end  
 
 %Allow for one bad tile so look at second worst tile

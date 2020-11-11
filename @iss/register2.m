@@ -32,6 +32,9 @@ rr = o.ReferenceRound;
 [nY, nX] = size(o.EmptyTiles);
 nTiles = nY*nX;
 NonemptyTiles = find(~o.EmptyTiles)';
+if size(NonemptyTiles,2)==1
+    NonemptyTiles = NonemptyTiles';
+end
 
 %Specify which rounds/colour channels to use (default is all)
 if isempty(o.UseChannels)
