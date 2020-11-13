@@ -313,10 +313,9 @@ end
 
 o.EmptyTiles = cellfun(@isempty, squeeze(o.TileFiles(o.ReferenceRound,:,:)));
 %Get a bug here if one dimension is only 1.
-if sum(size(o.TileFiles(o.ReferenceRound,:,:),2:3)==size(o.EmptyTiles))==0
+if size(o.TileFiles(o.ReferenceRound,:,:),2)~=size(o.EmptyTiles,1)
     o.EmptyTiles = o.EmptyTiles';
 end
-
 %Plot boxplots showing distribution af AutoThresholds
 if o.Graphics
     UseRounds = setdiff(1:o.nRounds+o.nExtraRounds,o.AnchorRound);
