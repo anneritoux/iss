@@ -38,35 +38,42 @@ gRoundIndex = int32(repelem(o.UseRounds,1,nChans));
 ChannelIndex = repmat(gChannelIndex,1,nCodes);
 RoundIndex = repmat(gRoundIndex,1,nCodes);
 GeneIndex = int32(repelem(1:nCodes,1,nRounds*nChans));
-HistZeroIndex = find(o.SymmHistValues == 0); 
 
 nSpots = size(GoodSpotColors,1);
-LogProb = zeros(nSpots,nCodes);
-BackgroundLogProb = zeros(nSpots,1);
+AllLogProbOverBackground = zeros(nSpots,nCodes);
+
+
+LogProbMultiplier = zeros(o.nRounds*o.nBP,nCodes);
+for g=1:nCodes
+    LogProbMultiplier(:,g) = o.UnbledCodes(g,:);
+end
+%How many squares that contribute:
+NormFactor = double(o.nBP*o.nRounds)/double(o.nRounds+o.ScoreScale*(o.nBP*o.nRounds-o.nRounds));  
+%Normalise by this to allow valid comparison
+LogProbMultiplier(LogProbMultiplier==0) = o.ScoreScale;
+LogProbMultiplier = LogProbMultiplier*NormFactor;
 
 fprintf('Tile %d: Percentage of spot probabilities found:       ',t);
 for s=1:nSpots
     sSpotColor = GoodSpotColors(s,sub2ind([o.nBP,o.nRounds],gChannelIndex,gRoundIndex));
     SpotIndex = repmat(o.ZeroIndex-1+sSpotColor,1,nCodes); %-1 due to matlab indexing I think
     %Indices = sub2ind(size(LookupTable),SpotIndex,GeneIndex,ChannelIndex,RoundIndex);
-     Indices = SpotIndex + (GeneIndex-1)*size(LookupTable,1) +...
+    Indices = SpotIndex + (GeneIndex-1)*size(LookupTable,1) +...
          (ChannelIndex-1)*size(LookupTable,1)*size(LookupTable,2)+...
          (RoundIndex-1)*size(LookupTable,1)*size(LookupTable,2)*size(LookupTable,3);
-    LogProb(s,:)=sum(reshape(LookupTable(Indices),[nRounds*nChans,nCodes]));
-    BackgroundIndices = HistZeroIndex+sSpotColor+...
-        (gChannelIndex-1)*size(o.HistProbs,1)+...
-        (gRoundIndex-1)*size(o.HistProbs,1)*size(o.HistProbs,2);
-    %BackgroundIndices = sub2ind(size(o.HistProbs),HistZeroIndex+GoodSpotColors(s,:),gChannelIndex,gRoundIndex);
-    BackgroundLogProb(s) = sum(log(o.HistProbs(BackgroundIndices)));
+    BackgroundSpotIndex = o.ZeroIndex-1+sSpotColor;
+    BackgroundIndices = BackgroundSpotIndex+...
+        (gChannelIndex-1)*size(o.BackgroundProb,1)+...
+        (gRoundIndex-1)*size(o.BackgroundProb,1)*size(o.BackgroundProb,2);
+    sBackgroundLogProb = log(o.BackgroundProb(BackgroundIndices));
+    LogProbMatrix = reshape(LookupTable(Indices),[nRounds*nChans,nCodes]);
+    AllLogProbOverBackground(s,:) = nansum((LogProbMatrix-sBackgroundLogProb').*LogProbMultiplier);
     if mod(s,round(nSpots/100))==0
         Percent = sprintf('%.6f', round(s*100/nSpots));
         fprintf('\b\b\b\b\b%s%%',Percent(1:4));
     end
 end
 fprintf('\n');
-
-AllLogProbOverBackground = LogProb-BackgroundLogProb;
-clearvars LogProb BackgroundLogProb;
 
 %% For each gene, find peaks in probability images. Keep these as spots going forward
 PeakSpotColors = cell(nCodes,1);

@@ -1,4 +1,4 @@
-function iss_view_spot(o, FigNo, ImSz, SpotLocation,ScoreMethod, SpotNum)
+function iss_view_spot_no_filter(o, FigNo, ImSz, SpotLocation,ScoreMethod, SpotNum)
 %% iss_view_spot(o, FigNo, ImSz, SpotLocation,ScoreMethod, SpotNum)
 %
 % Check PCR by plotting location of spot in each round and color channel
@@ -70,11 +70,11 @@ else
 end
 
 
-fprintf('loading channel/round images...');
 %Find tile that the point is on and local centered coordinates in reference round
 Dist2Tiles = [xy(2),xy(1)]-o.TileOrigin(:,:,o.ReferenceRound);
 Dist2Tile = min(sum(Dist2Tiles(Dist2Tiles(:,1)>=0 & Dist2Tiles(:,2)>=0,:),2));
 t = find(sum(Dist2Tiles,2)==Dist2Tile);
+t_rawdata = str2double(o.TileFiles{1,t}(end-4));        %WILL BE A BUG IF TILE NUMBER>9!!!!!!!
 LocalYX = [xy(2),xy(1)]-o.TileOrigin(t,:,o.ReferenceRound)-o.TileCentre;
 
 if strcmpi(ScoreMethod,'DotProduct')
@@ -87,17 +87,36 @@ end
 
 
 try
-    clf(27642)
-    figure(27642)
+    clf(276422)
+    figure(276422)
 catch
-    figure(27642)
+    figure(276422)
 end
-set(gcf,'Position',[164,108,1621,805])
+set(gcf,'Position',[164,108,1621,805]);
+
+
+fprintf('Loading in      ');
 for r=1:o.nRounds
+    
+    imfile = fullfile(o.InputDirectory, [o.FileBase{r}, o.RawFileExtension]);  %raw data file name for round r
+    % construct a Bio-Formats reader with the Memoizer wrapper
+    bfreader = loci.formats.Memoizer(bfGetReader(), 0);
+    bfreader.setId(imfile);
+    % get some basic image metadata
+    [nSeries, nSerieswPos, ~, nZstacks, ~, ~] = get_ome_tilepos(bfreader);
+    scene = nSeries/nSerieswPos;
+    bfreader.close();
+    
+    % a new reader per worker
+    bfreader = javaObject('loci.formats.Memoizer', bfGetReader(), 0);
+    % use the memo file cached before
+    bfreader.setId(imfile);
+    bfreader.setSeries(scene*t_rawdata-1);
     
     Ylegends = {o.bpLabels{:}};
     Xlegends = string(1:o.nRounds);
     for b=1:o.nBP
+        fprintf('\b\b\b\b\br%d/b%d',r,b);
         
         rbYX = round([LocalYX,1]*o.D(:,:,t,r,b)+o.TileCentre);
         y0 = rbYX(1);
@@ -109,13 +128,17 @@ for r=1:o.nRounds
         y2 = min(o.TileSz,y0 + ImSz);
         x1 = max(1,x0 - ImSz);
         x2 = min(o.TileSz,x0 + ImSz);
-        BaseIm = int32(imread(o.TileFiles{r,t}, b, 'PixelRegion', {[y1 y2], [x1 x2]}))-o.TilePixelValueShift;
-        if o.SmoothSize
-            SE = fspecial3('ellipsoid',o.SmoothSize);
-            BaseImSm = imfilter(BaseIm, SE);
-        else
-            BaseImSm = BaseIm;
-        end
+        
+        I = cell(nZstacks,1);
+        for z = 1:nZstacks
+            iPlane = bfreader.getIndex(z-1, b-1, 0)+1;
+            I{z} = bfGetPlane(bfreader, iPlane, x1, y1, 2*ImSz+1, 2*ImSz+1);
+            %I{z} = bfGetPlane(bfreader, iPlane);
+        end        
+        % focus stacking
+        BaseImSm = o.fstack_modified(I(o.FirstZPlane:end));
+        %BaseImSm = I{7};
+        %BaseImSm = BaseImSm(y1:y2,x1:x2);
         
         h = subplot(o.nBP, o.nRounds, (b-1)*o.nRounds + r);
         if r == 1 && b == 1
@@ -126,22 +149,24 @@ for r=1:o.nRounds
             Pos3 = get(h,'position');
         end
         imagesc([x1 x2], [y1 y2], BaseImSm); hold on
-        %caxis([min(-150,min(BaseImSm(:))),max(150,max(BaseImSm(:)))]);
-        colormap(gca,bluewhitered);
         axis([x0-ImSz, x0+ImSz, y0-ImSz, y0+ImSz]);
         if Dist<MaxDist
             %caxis([0,max(150,max(BaseImSm(:)))]);
         else
             %caxis([min(-50,min(BaseImSm(:))),max(150,max(BaseImSm(:)))]);
         end
+        try
+            %caxis([min(BaseImSm(:)),5000]);
+        catch
+        end
         colorbar;
         if numCharCode(r)==b && Dist<MaxDist
             ax = gca;
             ax.XColor = 'r';
             ax.YColor = 'r';
-            plot(xlim, [y0 y0], 'g'); plot([x0 x0], ylim, 'g');
+            plot(xlim, [y0 y0], 'r'); plot([x0 x0], ylim, 'r');
         else
-            plot(xlim, [y0 y0], 'k'); plot([x0 x0], ylim, 'k');
+            plot(xlim, [y0 y0], 'w'); plot([x0 x0], ylim, 'w');
         end
         
         if r==1; ylabel(Ylegends{b},'Color',[0.15 0.15 0.15]); end
@@ -149,9 +174,10 @@ for r=1:o.nRounds
         %title(sprintf('Round %d, Base %d, Tile %d', r, b, t));
         %drawnow
         set(gca, 'YDir', 'normal');
-        hold off
     end
 end
+fprintf('\n');
+
 PosDev = 0.02;
 SuperAxisPos = [Pos2(1:2)-PosDev,Pos3(1)+Pos3(2)-Pos2(1)+PosDev*2,Pos1(2)+Pos1(4)-Pos3(2)+PosDev*2];
 hSuper=axes('position',SuperAxisPos,'visible','off');
@@ -161,7 +187,7 @@ axes(hSuper);
 ylabel('Channel');
 xlabel('Round');
 
-fprintf('done\n');
+
 if SpotLocation
     if strcmpi(ScoreMethod,'DotProduct')
         if o.SpotScore(SpotNo)>o.CombiQualThresh

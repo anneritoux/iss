@@ -7,17 +7,29 @@ function QualOK = quality_threshold(o,Method)
 
 
 if strcmpi('Prob',Method)
-    QualOK = (o.pSpotScore>o.pScoreThresh & o.pSpotIntensity>0 | ...
-    o.pSpotIntensity>o.pIntensityThresh & o.pLogProbOverBackground>o.pLogProbThresh & o.pSpotScore+o.pSpotScoreDev>o.pDevThresh...
-    & o.pSpotScore>o.pScoreThresh2); 
-%| o.pSpotIntensity>1000);
+    %QualOK = (o.pSpotScore>o.pScoreThresh & o.pSpotIntensity>o.pIntensityThresh2 | ...
+    %o.pSpotScore>o.pScoreThresh2 & o.pSpotScore+o.pLogProbOverBackground>o.pLogProbThresh2 &...
+    %o.pSpotIntensity>o.pIntensityThresh); 
+    %QualOK = QualOK & o.pSpotIntensity2 > o.pIntensity2Thresh;
+    QualOK = o.pSpotScore>0 & o.pLogProbOverBackground+o.pQualParam1*o.pSpotScore>o.pQualThresh1 | ...
+        o.pSpotScore==0 & o.pLogProbOverBackground+o.pQualParam2*o.pSpotScore>o.pQualThresh2;
 elseif strcmpi('Pixel',Method)
-    QualOK = (o.pxSpotScore>o.pScoreThresh & o.pxSpotIntensity>0 | ...
-    o.pxSpotIntensity>o.pIntensityThresh & o.pxLogProbOverBackground>o.pLogProbThresh & o.pxSpotScore+o.pxSpotScoreDev>o.pDevThresh...
-    & o.pxSpotScore>o.pScoreThresh2);
+    %QualOK = (o.pxSpotScore>o.pScoreThresh & o.pxSpotIntensity>o.pIntensityThresh2 | ...
+    %o.pxSpotScore>o.pScoreThresh2 & o.pxSpotScore+o.pxLogProbOverBackground>o.pLogProbThresh2 &...
+    %o.pxSpotIntensity>o.pIntensityThresh); 
+    %QualOK = QualOK & o.pxSpotIntensity2 > o.pIntensity2Thresh;
+    QualOK = o.pxSpotScore>0 & o.pxLogProbOverBackground+o.pQualParam1*o.pxSpotScore>o.pQualThresh1 | ...
+        o.pxSpotScore==0 & o.pxLogProbOverBackground+o.pQualParam2*o.pxSpotScore>o.pQualThresh2;
+% Extra last condition is for overlapping spots
 %| o.pSpotIntensity>1000);
 elseif strcmpi('DotProduct',Method)
     QualOK = (o.SpotCombi & o.SpotScore>o.CombiQualThresh & o.SpotIntensity>o.CombiIntensityThresh & o.SpotScoreDev>o.CombiDevThresh);
+elseif strcmpi('OMP',Method)
+     %Old method below
+     %QualOK = o.ompNeighbNonZeros>o.ompNeighbThresh | (o.ompSpotIntensity>o.ompIntensityThresh & o.ompNeighbNonZeros>o.ompNeighbThresh2);
+     %QualOK = QualOK & o.ompSpotIntensity2 > o.ompIntensity2Thresh;
+     %New method, found using PyTorch
+     QualOK = o.ompNeighbNonZeros>o.ompNeighbThresh | o.ompSpotIntensity>o.ompIntensityThresh | o.ompScore>o.ompScoreThresh;
 else
     error('Method not valid, must be DotProduct, Prob or Pixel');
 end

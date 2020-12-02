@@ -17,6 +17,11 @@ function o = PCR_analysis(o,y0,x0)
 nTiles = nY*nX;
 NonemptyTiles = find(~o.EmptyTiles)';
 
+if ~isfield(o.FindSpotsInfo,'nMatchesFailed')
+    o.FindSpotsInfo.nMatchesFailed = o.nMatches;
+    o.FindSpotsInfo.ErrorFailed = o.Error;
+end
+
 %Centre SpotYX
 x0(NonemptyTiles,o.ReferenceSpotChannels) = cellfun(@(x0) x0(:,1:2)-o.TileCentre,...
     x0(NonemptyTiles,o.ReferenceSpotChannels),'UniformOutput',false);
@@ -37,7 +42,7 @@ MyNeighb = cell(nTiles,o.nBP,o.nRounds);
 xM = cell(nTiles,o.nBP,o.nRounds);
 
 
-fprintf('\nDoing PCR analysis of tile   ');
+fprintf('PCR - Doing analysis of tile   ');
 for t=NonemptyTiles
     x_t = vertcat(x{t,:});
     for r=o.UseRounds
@@ -59,11 +64,11 @@ for t=NonemptyTiles
             %Make kd trees out of these well isolated points
             k(t,b,r) = {KDTreeSearcher(y{t,b,r})};
             
-            xM(t,b,r) = {o.A(b)*(x_t*o.D(:,:,t,r))+o.TileCentre};
+            xM(t,b,r) = {x_t*o.D(:,:,t,r,b)+o.TileCentre};
             Neighbor(t,b,r) = {k{t,b,r}.knnsearch(xM{t,b,r})};
             [~,Dist] = k{t,b,r}.knnsearch(xM{t,b,r});
             UseMe(t,b,r) = {Dist<o.PcDist};
-            MyNeighb(t,b,r) = {Neighbor{t,b,r}(UseMe{t,b,r}>0)};
+            MyNeighb(t,b,r) = {Neighbor{t,b,r}(UseMe{t,b,r}>0)};            
             %o.nMatches(t,b,r) = sum(UseMe{t,b,r});
             
             anchor_NeighbYX = x_t(UseMe{t,b,r}>0,1:2);      %position in anchor round

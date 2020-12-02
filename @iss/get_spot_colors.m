@@ -19,8 +19,6 @@ fprintf('Tile %d: Getting spot colours\n', t);
 CenteredAnchorLocalYX = AnchorLocalYX - [o.TileCentre,0];
 TileSpotColors = nan(nPixels, o.nBP, o.nRounds);
 
-%MAYBE CHANGE THIS SO ACCOUNT FOR SPOTS THAT CHANGE TILE IN DIFFERENT
-%ROUNDS
 for r = o.UseRounds
     FileName = o.TileFiles{r,t};
     TifObj = Tiff(FileName);
@@ -29,7 +27,7 @@ for r = o.UseRounds
         BaseIm = int32(TifObj.read())-o.TilePixelValueShift;
         %Find shifted shifted coordinates on new round/channel and
         %corresponding intensities
-        MyPointCorrectedYX = o.A(b)*(CenteredAnchorLocalYX*o.D(:,:,t,r))+o.TileCentre;
+        MyPointCorrectedYX = CenteredAnchorLocalYX*o.D(:,:,t,r,b)+o.TileCentre;
         MyPointCorrectedYX = round(MyPointCorrectedYX);
         TileSpotColors(:,b,r) = IndexArrayNan(BaseIm, MyPointCorrectedYX');
     end

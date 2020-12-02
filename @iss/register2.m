@@ -61,7 +61,7 @@ o.RawIsolated = cell(nTiles,o.nBP);
 o.RawLocalNo = zeros(nTiles,1);
 
 for t=NonemptyTiles(:)'
-    if mod(t,1)==0; fprintf('Loading tile %d reference image\n', t); end
+    if mod(t,10)==0; fprintf('Loading tile %d reference image\n', t); end
     FileName = o.TileFiles{rr,t};
     TifObj = Tiff(FileName);
     for b=o.ReferenceSpotChannels        
@@ -106,7 +106,7 @@ o.RegInfo.SingleFft.OldShifts = [];
 o.RegInfo.SingleFft.OldScores = [];
 
 %% now do the alignments
-for t=NonemptyTiles(:)'
+for t=NonemptyTiles
     if isprop(o,'RegMethod') && strcmpi(o.RegMethod, 'Fft')
         break;
     end
@@ -311,7 +311,7 @@ MaxTileLoc = max(AnchorOrigin);
 BigDapiIm = zeros(ceil((MaxTileLoc + o.TileSz)), 'uint16');
 BigAnchorIm = zeros(ceil((MaxTileLoc + o.TileSz)), 'uint16');
 
-for t=NonemptyTiles(:)'
+for t=NonemptyTiles
     MyOrigin = AnchorOrigin(t,:);
     if mod(t,10)==0; fprintf('Loading tile %d DAPI image\n', t); end
     if ~isfinite(MyOrigin(1)); continue; end
@@ -333,7 +333,7 @@ if o.Graphics
     SquareY2 = [0, o.TileSz, o.TileSz];
     figure(53277);imagesc(BigAnchorIm-o.TilePixelValueShift);
     hold on
-    for t=NonemptyTiles(:)'
+    for t=NonemptyTiles
         MyOrigin = o.TileOrigin(t,:,o.ReferenceRound);
         plot(SquareX1 + MyOrigin(2), SquareY1 + MyOrigin(1),...
             '--', 'Color', 'w');

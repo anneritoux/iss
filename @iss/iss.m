@@ -109,11 +109,10 @@ classdef iss
         %channel c to be within the Tiff range. If
         %nPixelsOutsideTiffRange(t,c,r) = 0, this is nan
         PixelsOutsideTiffRangeExtractScale;
-        
+
         %When converting the 3D data to 2D using fstack_modified, all z
         %planes above this will be used.
         FirstZPlane = 2;
-        
         
         %% parameters: registration and alignment
         
@@ -141,7 +140,7 @@ classdef iss
         
         % fraction of point cloud matches needed to count an overlap
         MinPCMatchFract = 0.1; 
-        MaxPCMatchThresh = 500;    %required matches can't be greater than this. 
+        MaxPCMatchThresh = 500;    %required matches can't be greater than this.         
         
         % If the number of images (Total number of images =
         % nTiles*nBP*nRounds) with nMatches < MinPCMatches exceeds
@@ -287,8 +286,10 @@ classdef iss
         %particular colour channel for hat color channel to be deemed
         %suitable for finding the initial shifts to the anchor round. If
         %all color channels have a tile with less spots than this, an error
-        %is thrown
-        MinSpots = 100;
+        %is thrown.
+        %Also any transforms that have nMatches<MinSpots will be
+        %recalculated in AmendPCR
+        MinSpots = 50;
         
         %FindSpotsSearch.Y,FindSpotsSearch.X are the ranges values of
         %shifts to check when looking for the initial shifts between rounds
@@ -551,17 +552,21 @@ classdef iss
         %ChangedSearch is number of times the search range had to be changed.
         %Outlier is a shift found that was wrong and subsequently changed
         %to the average of all other shifts.
+        %DFailed is D before AmendPCR.
+        %nMatchesFailed is nMatches before AmendPCR.
+        %ErrorFailed is Error before AmendPCR.
         FindSpotsInfo;
         
         %TileCentre is the yx centre of tile, required for transformation.
         TileCentre;
         
-        % A(c): stores the scaling correction for chromatic aberration
-        % found by point cloud registration for color channel c
+        % A(c): stores the mean scaling correction for chromatic aberration
+        % found by point cloud registration for color channel c. This is
+        % only used for those for which PcFailed(t,c,r)==true.
         A;
         
-        % D(3,2,t,r): stores the final affine transform found by point cloud registration
-        % on round r tile t.
+        % D(3,2,t,r,c): stores the final affine transform found by point cloud registration
+        % on tile t, round r, channel c.
         D;
         
         % cc(t,1,r) stores the correlation coefficient for the initial
@@ -576,9 +581,38 @@ classdef iss
         % for tile t, color channel c, round r
         Error;
         
+        % PcFailed(t,c,r): This is a logical array. A value of 1 indicates
+        % that nMatches high enough for the PCR results to be used. For
+        % these images, chromatic aberration will be the mean value of that
+        % colour channel. The shift will be found using an Fft method.
+        PcFailed;
+        
+        
         % nPcCovergedImg is the fraction of images that converged in PCR.
         % Denominator is nTiles*o.nBP*o.nRounds
         nPcCovergedImg;
+        
+        % PcRegLambda is the constant for the regularised PCR. 1 is the
+        % shift scale factor. 2 is the scaling (between colour channels)
+        % scale factor
+        PcRegLambda1 = 9;
+        PcRegLambda2 = 30000;
+        
+        % PcMinSpots is the minimum number of spots to do PCR without
+        % regularization. Below this amount regularisation is used.
+        PcMinSpots = 200;       
+        
+        % If a tile has a chromatic aberration scaling that has an 
+        % absolute deviation of more than PcMaxScaleDev from the median 
+        % for that colour channel and nMatches<PcMinSpotsScaling,
+        % it will be re-evaluated with regularization.
+        PcMaxScaleDev = 0.5e-3;
+        PcMinSpotsScaling = 500;
+        
+        % If a tile has a shift that has an absolute deviation of more than
+        % PcMaxShiftDev pixels from the median for that tile and round, it will be
+        % re-evaluated with regularization.
+        PcMaxShiftDev = 10;
         
         % PcGrad(t,c,r,1) is the gradient of the Y shift with respect to
         % the normalised Y coordinate (from -1 to +1) for tile t, channel
@@ -700,18 +734,13 @@ classdef iss
         % crosstalk and un-nomalising.
         pBledCodes;
                 
-        %RaylConst is the constant used in the rayleigh distribution for
+        %GammaShape is the shape parameter used in the gamma distribution for
         %the estimated distribution of lambda such that cSpotColors =
         %Lambda*pBledCode
-        RaylConst = 1.0688;
-        
-        %ExpConst is same as above but exponenital distribution used for
-        %all rounds/channels that don't appear in CharCode for each gene.
-        ExpConst = 3.5;
+        GammaShape = 3.0;
         
         %LambdaDist(:,g,b,r) is the probability distribution of lambda for
-        %gene g, channel b and round r. Rayleigh if appear in CharCodes,
-        %Exp otherwise using constants above.
+        %gene g, channel b and round r. Gamma distribution
         LambdaDist;
         
         %ZeroIndex is the index of the 0 value in
@@ -719,17 +748,28 @@ classdef iss
         %Needed to find values in lookup table.
         ZeroIndex;        
         
+        %BackgroundProb(:,b,r) is the reference probability distribution
+        %for visualisation - it is the probability distribution if the bled
+        %code had a value of 1
+        BackgroundProb;
+        
         %pIntensityThresh is the value pSpotIntensity(s) needs to exceed for spot s
-        %to count
+        %to count. The different thresholds apply to different conditions
+        %on other variables - see o.quality_threshold
         pIntensityThresh = 100;
+        pIntensityThresh2 = 50;
+        
+        %pSpotIntensity2 needs to be greater than pIntensity2Thresh
+        pIntensity2Thresh = 0;
         
         %pLogProbThresh is the value pLogProbOverBackground(s) needs to exceed for spot s
         %to count
         pLogProbThresh = 0;
+        pLogProbThresh2 = 0;
         
         %pScoreThresh is the value pSpotScore(s) needs to exceed for spot s
         %to count
-        pScoreThresh = 10;       
+        pScoreThresh = 80;       
         
         %If pSpotScore(s) < pScoreThresh but pSpotScore(s) > pScoreThresh2
         %and has high intensity then will count as spot.
@@ -739,19 +779,35 @@ classdef iss
         %count - avoid spots with similar score to all genes.
         pDevThresh = 6;
         
+        %ScoreScale is the contribution each round/channel not in Unbled
+        %code contributes to LogProbOverBackground compared to each
+        %round/channel in Unbled code
+        ScoreScale = 1;
+        
+        %Values used in quality_threshold for prob method
+        pQualThresh1 = -53.3786; %Optimized using PyTorch
+        pQualParam1 = 1.746;    %Optimized using PyTorch
+        pQualThresh2 = 15.634; %Optimized using PyTorch
+        pQualParam2 = 1.0;    %Optimized using PyTorch
+        
         
         %% variables: spot calling outputs
         %pSpotIntensity is the modified spot intensity given by
         %get_spot_intensity.m
         pSpotIntensity;
         
+        %pSpotIntensity2 is the median intensity in the 7 rounds/channels
+        %specified by the gene assigned i.e. pSpotCodeNo.
+        pSpotIntensity2;
+        
         %pLogProb is sum(ln(Prob(b,r))/ln(HistProb(SpotColor(b,r),b,r)))
         %i.e. probability spot can be explained by gene relative to
         %probability it can be explained by background alone.
         pLogProbOverBackground;        
         
-        %pSpotScore is pLogProb -max(pLogProb(SpotCodeNo~=pSpotCodeNo))
-        pSpotScore;
+        %pSpotScore is for the sorted array pLogProb,
+        %pLogProb(1)-pLogProb(2)
+        pSpotScore;        
         
         %pSpotScoreDev(s) is the standard deviation of the log prob of spot s
         %for all genes
@@ -810,13 +866,22 @@ classdef iss
         %get_spot_intensity.m
         pxSpotIntensity;
         
+        %pxSpotIntensity2 is the median intensity in the 7 rounds/channels
+        %specified by the gene assigned i.e. pxSpotCodeNo.
+        pxSpotIntensity2;        
+        
         %pxLogProb is sum(ln(Prob(b,r))/ln(HistProb(SpotColor(b,r),b,r)))
         %i.e. probability spot can be explained by gene relative to
         %probability it can be explained by background alone.
         pxLogProbOverBackground;        
         
-        %pxSpotScore is pLogProb -max(pLogProb(SpotCodeNo~=pSpotCodeNo))
+        %pxSpotScore is for the sorted array pLogProb,
+        %pxLogProb(1)-pxLogProb(2)
         pxSpotScore;
+        
+        %pxSpotScore2 is for the sorted array pLogProb,
+        %pxLogProb(2)-pxLogProb(3)
+        pxSpotScore2;
         
         %pxSpotScoreDev(s) is the standard deviation of the log prob of spot s
         %for all genes
@@ -826,6 +891,114 @@ classdef iss
         pxSpotCodeNo;
         
         
+        %% Gad stuff
+        GadChannel = 4;
+        GadRound = 9;
+        GcampChannel = 6;
+        GcampRound = 9;
+        GadReferenceChannel = 6;   %Channel in Gad round to register to
+        
+        GadRawLocalYX;
+        GadRawIsolated;
+        
+        GadInfo;
+        BigGadFile;
+        BigGcampFile;
+        pxLocalTile;    %local tile for pxSpotGlobalYX
+        pxGadColor;     %(s,b) is the intensity of spot pxSpotGlobalYX(s,:)
+                        %in channel b of gad round
+        
+        GadPeakSpots;   %This is 1 for best gene value and 2 for score as match to gad.
+                        %GadPeakSpots(s) refers to cSpotColors(s,:,:)
+        GadPeakColor;   %Intensity in Gad round/Gad channel of SpotGlobalYX. 
+                        %It is zero if not a peak in Gad channel.
+                        %I.e. if GadPeakSpots==0
+        pLocalTile;     %local tile for SpotGlobalYX
+        pGadColor       %(s,b) is the intensity of spot SpotGlobalYX(s,:)
+                        %in channel b of gad round
+        %All spots in GadTruePositiveSet should be Gad and no spots in
+        %GadFalsePositiveSet should be Gad. Sets are obtained from 
+        %GadGroundTruthLogical.m
+        GadColorTruePositiveThresh = 250;
+        pxGadTruePositiveSet;
+        GadColorFalsePositiveThresh = 250;
+        pxGadFalsePositiveSet;
+                        
+        %% OMP
+        
+        %OMP stops when reduction in residual drops below
+        %ResidualThresh = ResidualThreshParam*SpotSecondLargestIntensity.
+        ResidualThreshParam = 0.175;
+        %ResidualThresh is clamped between the two values below.
+        ResidualThreshMin = 0.0875;     
+        ResidualThreshMax = 3.0;
+        
+        %ompMaxGenes is the maximum number of genes that can be assigned to
+        %each pixel.
+        ompMaxGenes = 6;
+        
+        %Spot colors are z scored by subtracting SHIFT and dividing by
+        %SCALED
+        SHIFT;
+        SCALE;
+        
+        %ScaledBM = o.pBleedMatrix(:,:,1)./squeeze(o.SCALE);
+        ScaledBM;
+        
+        %ScaledBledCodes = ScaledBM * UnbledCodes.
+        %Last 7 are the background codes
+        ScaledBledCodes;
+        SpatialBledCodes;
+        
+        %BackgroundEigenvectors(:,n) are the 7 color channel values of the
+        %nth eigenvector of the covariance matrix comprised of pixels and
+        %rounds of spots with low dot product with any gene bled code.
+        %BackgroundEigenvalue(n) is the corresponding eigenvalue.
+        BackgroundEigenvectors;
+        BackgroundEigenvalue;
+        
+        %ompCoef(s,g) is the weighting of spot s for gene g. Most are zero.
+        %The last 7 are background codes and are always non zero.
+        ompCoefs;
+        %ompNeighbNonZeros(s) is the number of pixels in the surrounding
+        %region around spot s that have non zero coefficient for the gene
+        %specified by pxSpotCodeNo(s). Min value is 1. Region size
+        %specified by o.PixelDetectRadius. For default,
+        %o.PixelDetectRadius=4, max value of this is 37.
+        ompNeighbNonZeros;
+        
+        %ompSpotCodeNo is best gene found by OMP.
+        ompSpotCodeNo;
+        
+        %ompSpotIntensity is the modified spot intensity given by
+        %get_spot_intensity.m
+        ompSpotIntensity;    
+        
+        %ompSpotIntensity2 is the median intensity in the 7 rounds/channels
+        %specified by the gene assigned i.e. ompSpotCodeNo.
+        ompSpotIntensity2;
+        
+        %ompScore is the reduction in error caused by introduction of gene in
+        %rounds/channels where there is not already a gene. Given by
+        %get_omp_score
+        ompScore;
+        
+        %ompNNprobs-output of neural network that gives probability that gene
+        %assignment is correct
+        %NNlayers gives values found for neural nework layers. remember
+        %Relu after 1st layer and softmax after 2nd layer.
+        pxNNlayers;
+        pxNNprobs;
+        ompNNlayers;
+        ompNNprobs;
+        
+        %Spots must have either ompSpotIntensity>ompIntensityThresh or 
+        %ompNeighbNonZeros>ompNeighbThresh
+        ompIntensityThresh=1650;  %Optimized using PyTorch
+        ompIntensity2Thresh = 0;
+        ompNeighbThresh=17;        %Optimized using PyTorch
+        ompNeighbThresh2=2;
+        ompScoreThresh = 10;         %Optimized using PyTorch
     end
     
 end

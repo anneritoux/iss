@@ -1,4 +1,4 @@
-function [o,x] = PointCloudRegister2(o, y0, x0, A0, nTiles)     %MADE A THE SAME FOR ALL TILES
+function [o,x] = PointCloudRegister6_Gad(o, y0, x0, nTiles)     %MADE A THE SAME FOR ALL TILES
 % o = o.PointCloudRegister(y, x, A0, Options)
 % 
 % Perform point cloud registration to map points x onto points y by
@@ -12,10 +12,6 @@ function [o,x] = PointCloudRegister2(o, y0, x0, A0, nTiles)     %MADE A THE SAME
 % x0{t,b} is a cell containing the YX location of spots in the 
 % reference round for tile t, channel b
 %
-% A0 are the initial scaling values for each colour channel 
-% taking account of chromatic aberration. All default to 1 if not
-% specified
-%
 % ToPlot: array of form [t,b,r] of specific example case to show plot of
 % for debugging purposes
 %
@@ -27,14 +23,6 @@ NonemptyTiles = find(~o.EmptyTiles)';
 if isempty(o.TileCentre)
     o.TileCentre = 0.5*[o.TileSz+1,o.TileSz+1];
 end
-%A should not change for o.ReferenceChannel
-
-%Colour channels that aren't the RefChannel need adjusting as we go on, to
-%account for chromatic aberration.
-RefChannelsToAdjust = setdiff(o.ReferenceSpotChannels,o.ReferenceChannel);
-
-%D should not change for o.ReferenceRound
-ImageRounds = setdiff(o.UseRounds,o.ReferenceRound);
 
 %Centre SpotYX
 x0(NonemptyTiles,o.ReferenceSpotChannels) = cellfun(@(x0) x0(:,1:2)-o.TileCentre,...
@@ -48,29 +36,22 @@ for t=NonemptyTiles
 end
 
 
-if nargin<4 || isempty(A0)
-    A0 = ones(o.nBP,1);
-elseif max(size(A0))==1
-    A = zeros(o.nBP,1);
-    for b=1:o.nBP
-        A(b) = A0;
-    end
-    A0 = A;    
-end
-
 if isempty(o.PcDist)
     o.PcDist = inf;
 end
 
 %Initialize variables
-D = zeros(3,2,nTiles,o.nRounds);
+D = o.D;
 for t=NonemptyTiles
     for r = o.UseRounds
-        D(1:2,:,t,r) = eye(2);
-        D(3,:,t,r) = o.D0(t,:,r);
+        for b=o.UseChannels
+            D(1:2,:,t,r,b) = eye(2);
+            D(1,1,t,r,b) = o.A(b,1);
+            D(2,2,t,r,b) = o.A(b,2);
+            D(3,:,t,r,b) = o.D0(t,:,r);
+        end
     end
 end
-A = A0;
 
 fprintf('\nPCR - Finding well isolated points');
 % find well isolated points as those whose second neighbor is far
@@ -103,83 +84,58 @@ end
 
 
 %%
-UseMe = cell(nTiles,o.nBP,o.nRounds);           %nP DIFFERENT FOR DIFFERENT TILES!!!
-Neighbor = cell(nTiles,o.nBP,o.nRounds);
-MyNeighb = cell(nTiles,o.nBP,o.nRounds);
-xM = cell(nTiles,o.nBP,o.nRounds);
-nMatches = zeros(nTiles,o.nBP,o.nRounds);
-Error = zeros(nTiles,o.nBP,o.nRounds);
+UseMe = cell(nTiles,o.nBP,o.nRounds+o.nExtraRounds);           %nP DIFFERENT FOR DIFFERENT TILES!!!
+Neighbor = cell(nTiles,o.nBP,o.nRounds+o.nExtraRounds);
+MyNeighb = cell(nTiles,o.nBP,o.nRounds+o.nExtraRounds);
+xM = cell(nTiles,o.nBP,o.nRounds+o.nExtraRounds);
+nMatches = zeros(nTiles,o.nBP,o.nRounds+o.nExtraRounds);
+Error = zeros(nTiles,o.nBP,o.nRounds+o.nExtraRounds);
+IsConverged = false(nTiles,o.nBP,o.nRounds+o.nExtraRounds);
 TotalNeighbMatches = length(NonemptyTiles)*length(o.UseChannels)*...
     length(o.UseRounds);
+FinishedGoodImages = false;
+i_finished_good = inf;
 
-for i=1:o.PcIter
+for i=1:o.PcIter+100
     
     LastNeighbor = Neighbor;
     
-
+    
     vertcat(o.RawLocalYX{:,b});
     
     for t=NonemptyTiles
-        for b = RefChannelsToAdjust
-            %Update position of reference round coordinates, based on new colour
-            %aberration matrices A. I.e. inv(A)*originalcoords as shift = 0
-            x{t,b}(:,1:2) = x0{t,b}/A(b);
-        end
         x_t = vertcat(x{t,:});
         for r=o.UseRounds
-            for b=o.UseChannels                                
-                xM(t,b,r) = {A(b)*(x_t*D(:,:,t,r))+o.TileCentre};   
+            for b=o.UseChannels
+                xM(t,b,r) = {x_t*D(:,:,t,r,b)+o.TileCentre};
+            end
+        end
+    end
+    
+    for b=o.UseChannels
+        for t=NonemptyTiles
+            x_t = vertcat(x{t,:});
+            for r=o.UseRounds
+                if IsConverged(t,b,r); continue; end
+                Neighbor(t,b,r) = {k{t,b,r}.knnsearch(xM{t,b,r})};
+                [~,Dist] = k{t,b,r}.knnsearch(xM{t,b,r});
+                UseMe(t,b,r) = {Dist<o.PcDist};
+                MyNeighb(t,b,r) = {Neighbor{t,b,r}(UseMe{t,b,r}>0)};
+                nMatches(t,b,r) = sum(UseMe{t,b,r});
+                Error(t,b,r) = sqrt(mean(Dist(UseMe{t,b,r}>0).^2));
+                if ~FinishedGoodImages
+                    D(:,:,t,r,b) = x_t(UseMe{t,b,r}>0,:)\(y{t,b,r}(MyNeighb{t,b,r},:)-o.TileCentre);
+                elseif FinishedGoodImages
+                    Scale = [o.PcRegLambda2;o.PcRegLambda2;o.PcRegLambda1]; %As shift differences are bigger than scaling differences.
+                    %Need to equalise their influence.
+                    x_regularised = [x_t(UseMe{t,b,r}>0,:);eye(3).*Scale];
+                    y_regularised = [(y{t,b,r}(MyNeighb{t,b,r},:)-o.TileCentre); D_average(:,:,t,r,b).*Scale];
+                    D(:,:,t,r,b) = x_regularised\y_regularised;
+                end
             end
         end
     end
         
-    %This part finds new neighbours and new estimates for A
-    for b=o.UseChannels
-        xA = [];
-        yA = [];
-        for t=NonemptyTiles
-            x_t = vertcat(x{t,:});
-            for r=o.UseRounds        
-                Neighbor(t,b,r) = {k{t,b,r}.knnsearch(xM{t,b,r})};
-                [~,Dist] = k{t,b,r}.knnsearch(xM{t,b,r});
-                UseMe(t,b,r) = {Dist<o.PcDist};                
-                MyNeighb(t,b,r) = {Neighbor{t,b,r}(UseMe{t,b,r}>0)};
-                nMatches(t,b,r) = sum(UseMe{t,b,r});
-                Error(t,b,r) = sqrt(mean(Dist(UseMe{t,b,r}>0).^2));
-                                
-                xShift = (x_t(UseMe{t,b,r}>0,:)*D(:,:,t,r));
-                xA = vertcat(xA, xShift);      
-                yA = vertcat(yA, y{t,b,r}(MyNeighb{t,b,r},:)-o.TileCentre);                      
-            
-            end
-        end
-        if ~(b==o.ReferenceChannel && o.ReferenceRound~=o.AnchorRound)
-            A(b) = xA(:)\yA(:);
-        end
-    end
-    
-    %This part finds new estimates for D
-    for t=NonemptyTiles
-        x_t = vertcat(x{t,:});
-        for r=ImageRounds
-            xD = [];
-            yD = [];            
-            for b=o.UseChannels                
-                xD = vertcat(xD,x_t(UseMe{t,b,r}>0,:));
-                yScaled = (y{t,b,r}(MyNeighb{t,b,r},:)-o.TileCentre)/A(b);
-                yD = vertcat(yD, yScaled);
-            end
-            try    
-                D(:,:,t,r) = xD\yD;
-            catch   %If there are not enough points don't change shift
-                D(:,:,t,r) = D(:,:,t,r);
-            end
-            
-        end
-    end
-    
-            
-   
     if isempty(o.ToPlot) == 0
         t = o.ToPlot(1);
         b = o.ToPlot(2);
@@ -194,26 +150,41 @@ for i=1:o.PcIter
         plot(xM{t,b,r}(:,2), xM{t,b,r}(:,1), 'r+');
         plot([xM{t,b,r}(UseMe{t,b,r}>0,2) y{t,b,r}(MyNeighb{t,b,r},2)]',...
             [xM{t,b,r}(UseMe{t,b,r}>0,1) y{t,b,r}(MyNeighb{t,b,r},1)]', 'k-', 'linewidth', 1);
-
+        
         drawnow;
     end
-    nNeighbMatches = sum(sum(sum(cellfun(@isequal, Neighbor(NonemptyTiles,o.UseChannels,o.UseRounds),...
-        LastNeighbor(NonemptyTiles,o.UseChannels,o.UseRounds)))));
-    fprintf('\nPCR - Iteration %d: Converged images = %d/%d',i,nNeighbMatches,TotalNeighbMatches);
-    if min(min(min(cellfun(@isequal, Neighbor, LastNeighbor)))) == 1; break; end
     
+    IsConverged = cellfun(@isequal, Neighbor, LastNeighbor);
+    nNeighbMatches = sum(sum(sum(IsConverged(NonemptyTiles,o.UseChannels,o.UseRounds))));
+    
+    if (nNeighbMatches == TotalNeighbMatches && ~FinishedGoodImages) ||...
+            (i==o.PcIter && ~FinishedGoodImages)
+        [D, D_average, PcFailed] = o.get_bad_transforms_Gad(NonemptyTiles,nMatches,D);
+        IsConverged(PcFailed) = false;
+        nNeighbMatches = sum(sum(sum(IsConverged(NonemptyTiles,o.UseChannels,o.UseRounds))));
+        FinishedGoodImages = true;
+        i_finished_good = i;        
+    elseif i == i_finished_good+1
+        IsConverged(PcFailed) = false;
+        nNeighbMatches = sum(sum(sum(IsConverged(NonemptyTiles,o.UseChannels,o.UseRounds))));
+    end
+        
+    fprintf('\nPCR - Iteration %d: Converged images = %d/%d',i,nNeighbMatches,TotalNeighbMatches);
+    %if min(min(min(cellfun(@isequal, Neighbor, LastNeighbor)))) == 1; break; end
+    if nNeighbMatches == TotalNeighbMatches; break; end
 end
+
 fprintf('\n');
 if nNeighbMatches<o.PcCovergedImgFrac*TotalNeighbMatches
     warning('\nPCR - Less than %d%% of images have converged',o.PcCovergedImgFrac*100);
 end
 
 %%
-o.A = A;
 o.D = D;
-o.nMatches = nMatches;
-o.Error = Error;
-o.nPcCovergedImg = nNeighbMatches/TotalNeighbMatches;
+o.GadInfo.nMatches = nMatches;
+o.GadInfo.Error = Error;
+o.GadInfo.nPcCovergedImg = nNeighbMatches/TotalNeighbMatches;
+o.GadInfo.PcFailed = PcFailed;
 %Uncentre reference spot YX
 x(NonemptyTiles,o.ReferenceSpotChannels) = cellfun(@(x) x(:,1:2)+o.TileCentre,...
     x(NonemptyTiles,o.ReferenceSpotChannels),'UniformOutput',false);

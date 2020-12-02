@@ -38,23 +38,30 @@ if nargin<2 || isempty(Method)
         if nargin>=4 && length(UseSpots)==length(o.SpotScore) && islogical(UseSpots)
             S.QualOK = UseSpots & ismember(o.SpotCodeNo,S.GeneNoToShow);
         else
-            if nargin>=4; warning('UseSpots not valid, using o.quality_threshold');end
+            if nargin>=4; warning('UseSpots not valid, using quality_threshold');end
             S.QualOK = o.quality_threshold(S.CallMethod) & ismember(o.SpotCodeNo,S.GeneNoToShow);
         end
     elseif strcmpi(S.CallMethod,'Prob')
         if nargin>=4 && length(UseSpots)==length(o.pSpotScore) && islogical(UseSpots)
             S.QualOK = UseSpots & ismember(o.pSpotCodeNo,S.GeneNoToShow);    
         else
-            if nargin>=4; warning('UseSpots not valid, using o.quality_threshold');end
+            if nargin>=4; warning('UseSpots not valid, using quality_threshold');end
             S.QualOK = o.quality_threshold(S.CallMethod) & ismember(o.pSpotCodeNo,S.GeneNoToShow);
         end
     elseif strcmpi(S.CallMethod,'Pixel')
-        if nargin>=4 && length(UseSpots)==length(o.pxSpotScore) && islogical(UseSpots)
+        if nargin>=4 && length(UseSpots)==size(o.pxSpotGlobalYX,1) && islogical(UseSpots)
             S.QualOK = UseSpots & ismember(o.pxSpotCodeNo,S.GeneNoToShow);    
         else
-            if nargin>=4; warning('UseSpots not valid, using o.quality_threshold');end
+            if nargin>=4; warning('UseSpots not valid, using quality_threshold');end
             S.QualOK = o.quality_threshold(S.CallMethod) & ismember(o.pxSpotCodeNo,S.GeneNoToShow);
         end
+    elseif strcmpi(S.CallMethod,'OMP')
+        if nargin>=4 && length(UseSpots)==size(o.pxSpotGlobalYX,1) && islogical(UseSpots)
+            S.QualOK = UseSpots & ismember(o.ompSpotCodeNo,S.GeneNoToShow);    
+        else
+            if nargin>=4; warning('UseSpots not valid, using quality_threshold');end
+            S.QualOK = o.quality_threshold(S.CallMethod) & ismember(o.ompSpotCodeNo,S.GeneNoToShow);
+        end       
     end
 else
     if strcmpi('Prob',Method)
@@ -65,20 +72,31 @@ else
             S.QualOK = UseSpots & ismember(o.pSpotCodeNo,S.GeneNoToShow);  
         else
             % which ones pass quality threshold (combi first)
-            if nargin>=4; warning('UseSpots not valid, using o.quality_threshold_prob');end
+            if nargin>=4; warning('UseSpots not valid, using quality_threshold');end
             S.QualOK = o.quality_threshold(S.CallMethod) & ismember(o.pSpotCodeNo,S.GeneNoToShow);
         end
     elseif strcmpi('Pixel',Method)
-        S.CallMethod = 'Pixel';
+        S.CallMethod = Method;
         S.SpotGeneName = o.GeneNames(o.pxSpotCodeNo);
         S.uGenes = unique(S.SpotGeneName);
-        if nargin>=4 && length(UseSpots)==length(o.pxSpotScore) && max(UseSpots)==1
+        if nargin>=4 && length(UseSpots)==length(o.pxSpotCodeNo) && max(UseSpots)==1
             S.QualOK = UseSpots & ismember(o.pxSpotCodeNo,S.GeneNoToShow);  
         else
             % which ones pass quality threshold (combi first)
-            if nargin>=4; warning('UseSpots not valid, using o.quality_threshold_prob');end
+            if nargin>=4; warning('UseSpots not valid, using quality_threshold');end
             S.QualOK = o.quality_threshold(S.CallMethod) & ismember(o.pxSpotCodeNo,S.GeneNoToShow);
         end
+    elseif strcmpi('OMP',Method)
+        S.CallMethod = Method;
+        S.SpotGeneName = o.GeneNames(o.ompSpotCodeNo);
+        S.uGenes = unique(S.SpotGeneName);
+        if nargin>=4 && length(UseSpots)==length(o.ompSpotCodeNo) && max(UseSpots)==1
+            S.QualOK = UseSpots & ismember(o.ompSpotCodeNo,S.GeneNoToShow);  
+        else
+            % which ones pass quality threshold (combi first)
+            if nargin>=4; warning('UseSpots not valid, using quality_threshold');end
+            S.QualOK = o.quality_threshold(S.CallMethod) & ismember(o.ompSpotCodeNo,S.GeneNoToShow);
+        end        
     else
         S.CallMethod = 'DotProduct';
         S.SpotGeneName = o.GeneNames(o.SpotCodeNo);
@@ -87,13 +105,13 @@ else
             S.QualOK = UseSpots & ismember(o.SpotCodeNo,S.GeneNoToShow);    
         else
             % which ones pass quality threshold (combi first)
-            if nargin>=4; warning('UseSpots not valid, using o.quality_threshold');end
+            if nargin>=4; warning('UseSpots not valid, using previous QualOK');end
             S.QualOK = o.quality_threshold(S.CallMethod) & ismember(o.SpotCodeNo,S.GeneNoToShow);
         end
     end
 end
 
-if strcmpi('Pixel',Method)
+if strcmpi('Pixel',Method) || strcmpi('OMP',Method)
     S.SpotYX = o.pxSpotGlobalYX;
 else
     S.SpotYX = o.SpotGlobalYX;

@@ -1,4 +1,4 @@
-function iss_view_spot(o, FigNo, ImSz, SpotLocation,ScoreMethod, SpotNum)
+function iss_view_spot_Gad(o, FigNo, ImSz, SpotLocation,ScoreMethod, SpotNum)
 %% iss_view_spot(o, FigNo, ImSz, SpotLocation,ScoreMethod, SpotNum)
 %
 % Check PCR by plotting location of spot in each round and color channel
@@ -84,6 +84,7 @@ elseif strcmpi(ScoreMethod,'Prob')
 elseif strcmpi(ScoreMethod,'Pixel')
     numCharCode = str2double(regexp(cell2mat(o.CharCodes(o.pxSpotCodeNo(SpotNo))),'\d','match'))+1;
 end
+numCharCode = [numCharCode,990];
 
 
 try
@@ -92,14 +93,19 @@ try
 catch
     figure(27642)
 end
-set(gcf,'Position',[164,108,1621,805])
-for r=1:o.nRounds
+Rounds = [o.UseRounds,o.GadRound];
+nRounds = length(Rounds);
+set(gcf,'Position',[164,108,1621,805]);
+Ylegends = {o.bpLabels{:}};
+Ylegends{o.GadChannel} = [Ylegends{o.GadChannel},' - Gad'];
+Ylegends{o.GcampChannel} = [Ylegends{o.GcampChannel},' - Gcamp'];
+Xlegends = [string(o.UseRounds),"Gad"];
+for r=1:nRounds
     
-    Ylegends = {o.bpLabels{:}};
-    Xlegends = string(1:o.nRounds);
+
     for b=1:o.nBP
         
-        rbYX = round([LocalYX,1]*o.D(:,:,t,r,b)+o.TileCentre);
+        rbYX = round([LocalYX,1]*o.D(:,:,t,Rounds(r),b)+o.TileCentre);
         y0 = rbYX(1);
         x0 = rbYX(2);
         if y0>o.TileSz || y0<1 || x0>o.TileSz || x0<1
@@ -109,7 +115,7 @@ for r=1:o.nRounds
         y2 = min(o.TileSz,y0 + ImSz);
         x1 = max(1,x0 - ImSz);
         x2 = min(o.TileSz,x0 + ImSz);
-        BaseIm = int32(imread(o.TileFiles{r,t}, b, 'PixelRegion', {[y1 y2], [x1 x2]}))-o.TilePixelValueShift;
+        BaseIm = int32(imread(o.TileFiles{Rounds(r),t}, b, 'PixelRegion', {[y1 y2], [x1 x2]}))-o.TilePixelValueShift;
         if o.SmoothSize
             SE = fspecial3('ellipsoid',o.SmoothSize);
             BaseImSm = imfilter(BaseIm, SE);
@@ -117,18 +123,17 @@ for r=1:o.nRounds
             BaseImSm = BaseIm;
         end
         
-        h = subplot(o.nBP, o.nRounds, (b-1)*o.nRounds + r);
+        h = subplot(o.nBP, nRounds, (b-1)*nRounds + r);
         if r == 1 && b == 1
             Pos1 = get(h,'position');
         elseif r == 1 && b == o.nBP
             Pos2 = get(h,'position');
-        elseif r == o.nRounds && b == o.nBP
+        elseif r == nRounds && b == o.nBP
             Pos3 = get(h,'position');
         end
         imagesc([x1 x2], [y1 y2], BaseImSm); hold on
-        %caxis([min(-150,min(BaseImSm(:))),max(150,max(BaseImSm(:)))]);
-        colormap(gca,bluewhitered);
         axis([x0-ImSz, x0+ImSz, y0-ImSz, y0+ImSz]);
+        colormap(gca,bluewhitered);
         if Dist<MaxDist
             %caxis([0,max(150,max(BaseImSm(:)))]);
         else
@@ -149,7 +154,6 @@ for r=1:o.nRounds
         %title(sprintf('Round %d, Base %d, Tile %d', r, b, t));
         %drawnow
         set(gca, 'YDir', 'normal');
-        hold off
     end
 end
 PosDev = 0.02;
@@ -205,6 +209,3 @@ if SpotLocation
     end
 end
 end
-
-
-

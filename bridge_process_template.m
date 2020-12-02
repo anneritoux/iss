@@ -13,7 +13,6 @@ o.InitialShiftChannel = 4;      %Channel to use to find initial shifts between r
 o.ReferenceRound = 4;           %Global coordinate system is built upon o.ReferenceRound and
 o.ReferenceChannel = 4;         %o.ReferenceChannel. If RefRound = AnchorRound, this has to be AnchorChannel.
 o.RawFileExtension = '.nd2';    %Format of raw data
-o.LogToFile = 1;                %Set to 1 if you want to save command window to txt file, else set to 0.
 
 %% File Names
 %CHECK BEFORE EACH RUN
@@ -35,13 +34,6 @@ o.OutputDirectory = '...\Experiment1\output';
 %Codebook is a text file containing 2 columns - 1st is the gene name. 2nd is
 %the code, length o.nRounds and containing numbers in the range from 0 to o.nBP-1.
 o.CodeFile = '\\zserver\Data\ISS\codebook_73gene_6channels_2col.txt';
-
-%% Logging
-if o.LogToFile
-    if isempty(o.LogFile)
-        o.LogFile = fullfile(o.OutputDirectory,'Log.txt');
-    end
-end
 
 %% extract and filter
 
@@ -72,14 +64,8 @@ end
 save(fullfile(o.OutputDirectory, 'oExtract'), 'o', '-v7.3');
 
 %% register
-%Specify tiles to run
-%o.EmptyTiles(:) = 1;
-%UseTiles = [1,2];
-%o.EmptyTiles(UseTiles) = 0;
-
-%o.AutoThresh(:,o.AnchorChannel,o.AnchorRound) = o.AutoThresh(:,o.AnchorChannel,o.AnchorRound)*0.25;     %As Anchor Threshold seemed too high
+o.AutoThresh(:,o.AnchorChannel,o.AnchorRound) = o.AutoThresh(:,o.AnchorChannel,o.AnchorRound)*0.25;     %As Anchor Threshold seemed too high
 %parameters
-%o.RegMethod = 'PointBased';
 o.TileSz = 2048;
 
 %Anchor spots are detected in register2
@@ -129,11 +115,7 @@ o.FindSpotsWidenSearch = [50,50];
 o.PcDist = 3;
 
 %run code
-if isprop(o,'FindSpotsMethod') && strcmpi(o.FindSpotsMethod, 'Fft')
-    o = o.find_spots_FFt;
-else
-    o = o.find_spots2;
-end
+o = o.find_spots2;
 save(fullfile(o.OutputDirectory, 'oFind_spots'), 'o', '-v7.3');
 
 %% call spots
@@ -144,7 +126,6 @@ o = o.call_spots;
 save(fullfile(o.OutputDirectory, 'oCall_spots'), 'o', '-v7.3');
 
 %Pixel based
-%This takes a long time to run so look at 'DotProduct' and 'Prob' results first.
 o = o.call_spots_pixel(LookupTable);
 save(fullfile(o.OutputDirectory, 'oCall_spots_pixel'), 'o', '-v7.3');
 %% plot results
@@ -153,13 +134,11 @@ o.CombiQualThresh = 0.7;
 Roi = round([1, max(o.SpotGlobalYX(:,2)), ...
 1, max(o.SpotGlobalYX(:,1))]);
 o.plot(o.BigAnchorFile,Roi,'Prob');
-%o.plot(o.BigAnchorFile,Roi,'Pixel');
 
 %iss_view_codes(o,234321,1);
 %o.pIntensityThresh = 100;
 %o.pScoreThresh = 10;
 %iss_change_plot(o,'Prob');
-%iss_change_plot(o,'Pixel');
 %iss_view_prob(o,234321,1);
 %iss_change_plot(o,'DotProduct');
 

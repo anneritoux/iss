@@ -34,7 +34,7 @@ end
 %Make kd trees out of these well isolated points
 k = KDTreeSearcher(y);
 %Transform according to tile in reference round to get transformed local coordinates relative to t2
-xM_t2 = o.A(b)*(x*o.D(:,:,t2,r))+o.TileCentre;  
+xM_t2 = x*o.D(:,:,t2,r,b)+o.TileCentre;  
 xM_Global = xM_t2 + o.TileOrigin(t2,:,r);     %Add TileOrigin for t2, to get global coordinates
 xM_t1 = xM_Global - o.TileOrigin(t,:,r);      %Go from global to local coordinates relative to t1.
 
@@ -43,7 +43,7 @@ UseMe = Dist<o.PcDist;
 nMatches = sum(UseMe);
 error = sqrt(mean(Dist(UseMe>0).^2));
 
-MyPointCorrectedYX = o.A(b)*(MyLocalYX*o.D(:,:,t2,r))+o.TileOrigin(t2,:,r)-o.TileOrigin(t,:,r);
+MyPointCorrectedYX = MyLocalYX*o.D(:,:,t2,r,b)+o.TileOrigin(t2,:,r)-o.TileOrigin(t,:,r);
 MyPointCorrectedYX = round(MyPointCorrectedYX+o.TileCentre);
 
 return

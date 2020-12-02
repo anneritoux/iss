@@ -1,4 +1,4 @@
-function SpotIntensity = get_spot_intensity(o,SpotCodeNo,SpotColors)
+function [SpotIntensity, MedianIntensity] = get_spot_intensity(o,SpotCodeNo,SpotColors)
 %This gives a modified spot intensity taking account of the gene it is
 %assigned to.
 %For spot s, it takes all colour channels that appear in the gene
@@ -19,11 +19,15 @@ end
 
 nSpots = length(SpotCodeNo);
 SpotIntensity = zeros(nSpots,1);
+MedianIntensity = zeros(nSpots,1);
 
 fprintf('Percentage of spot intensities found:       ');
 for s=1:nSpots
     SpotCode = SpotColors(s,:);
-    SpotIntensity(s) = mean(SpotCode(CodeIndex(SpotCodeNo(s),:)))-mean(SpotCode(NonCodeIndex{SpotCodeNo(s)}));
+    %SpotIntensity(s) = mean(SpotCode(CodeIndex(SpotCodeNo(s),:)))-mean(SpotCode(NonCodeIndex{SpotCodeNo(s)}));
+    %MedianIntensity(s) = median(SpotCode(CodeIndex(SpotCodeNo(s),:)));
+    SpotIntensity(s) = median(SpotCode(CodeIndex(SpotCodeNo(s),:)));
+    MedianIntensity(s) = median(SpotCode(NonCodeIndex{SpotCodeNo(s)}));
     if mod(s,round(nSpots/100))==0
         Percent = sprintf('%.6f', round(s*100/nSpots));
         fprintf('\b\b\b\b\b%s%%',Percent(1:4));

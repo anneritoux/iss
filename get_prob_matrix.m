@@ -10,7 +10,6 @@ function ProbMatrix = get_prob_matrix(o,SpotCode,GeneNo)
 
 %%
 %x = min(o.cSpotColors(:))-1:max(o.cSpotColors(:))-1;    %subsitiution x=lambda*g, -1 due to matlab indexing
-HistZeroIndex = find(o.SymmHistValues == 0);            %As HistProbs is of different length to x
 ProbMatrix = nan(o.nBP,o.nRounds);
 for b=o.UseChannels
     for r=o.UseRounds
@@ -18,7 +17,7 @@ for b=o.UseChannels
         LogConvDist = log(conv(o.LambdaDist(:,GeneNo,b,r),o.HistProbs(:,b,r),'same'));
         %Need to relate it to something that is the same for all genes i.e.
         %probability spot explained by background alone
-        ProbMatrix(b,r) = LogConvDist(o.ZeroIndex-1+f)-log(o.HistProbs(HistZeroIndex+f,b,r));
+        ProbMatrix(b,r) = LogConvDist(o.ZeroIndex-1+f)-log(o.BackgroundProb(o.ZeroIndex-1+f,b,r));
         
         %x2 = x(x<HistZeroIndex+f);      %So ensure indices>0
         %hIndices = HistZeroIndex+f-x2;

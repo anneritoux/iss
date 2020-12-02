@@ -1,4 +1,4 @@
-function [o,x] = PointCloudRegister2(o, y0, x0, A0, nTiles)     %MADE A THE SAME FOR ALL TILES
+function [o,x] = PointCloudRegister2_Gad(o, y0, x0, nTiles)     %MADE A THE SAME FOR ALL TILES
 % o = o.PointCloudRegister(y, x, A0, Options)
 % 
 % Perform point cloud registration to map points x onto points y by
@@ -48,15 +48,7 @@ for t=NonemptyTiles
 end
 
 
-if nargin<4 || isempty(A0)
-    A0 = ones(o.nBP,1);
-elseif max(size(A0))==1
-    A = zeros(o.nBP,1);
-    for b=1:o.nBP
-        A(b) = A0;
-    end
-    A0 = A;    
-end
+A0 = o.A;
 
 if isempty(o.PcDist)
     o.PcDist = inf;
@@ -65,7 +57,7 @@ end
 %Initialize variables
 D = zeros(3,2,nTiles,o.nRounds);
 for t=NonemptyTiles
-    for r = o.UseRounds
+    for r = 1:o.nRounds+o.nExtraRounds
         D(1:2,:,t,r) = eye(2);
         D(3,:,t,r) = o.D0(t,:,r);
     end
@@ -92,7 +84,7 @@ end
 
 fprintf('\nPCR - Making kd trees');
 %Make kd trees out of these well isolated points
-k = cell(nTiles,o.nBP,o.nRounds);
+k = cell(nTiles,o.nBP,o.nRounds+o.nExtraRounds);
 for t=NonemptyTiles
     for r=o.UseRounds
         for b=o.UseChannels
@@ -103,12 +95,12 @@ end
 
 
 %%
-UseMe = cell(nTiles,o.nBP,o.nRounds);           %nP DIFFERENT FOR DIFFERENT TILES!!!
-Neighbor = cell(nTiles,o.nBP,o.nRounds);
-MyNeighb = cell(nTiles,o.nBP,o.nRounds);
-xM = cell(nTiles,o.nBP,o.nRounds);
-nMatches = zeros(nTiles,o.nBP,o.nRounds);
-Error = zeros(nTiles,o.nBP,o.nRounds);
+UseMe = cell(nTiles,o.nBP,o.nRounds+o.nExtraRounds);           %nP DIFFERENT FOR DIFFERENT TILES!!!
+Neighbor = cell(nTiles,o.nBP,o.nRounds+o.nExtraRounds);
+MyNeighb = cell(nTiles,o.nBP,o.nRounds+o.nExtraRounds);
+xM = cell(nTiles,o.nBP,o.nRounds+o.nExtraRounds);
+nMatches = zeros(nTiles,o.nBP,o.nRounds+o.nExtraRounds);
+Error = zeros(nTiles,o.nBP,o.nRounds+o.nExtraRounds);
 TotalNeighbMatches = length(NonemptyTiles)*length(o.UseChannels)*...
     length(o.UseRounds);
 
@@ -209,11 +201,11 @@ if nNeighbMatches<o.PcCovergedImgFrac*TotalNeighbMatches
 end
 
 %%
-o.A = A;
+o.Gad_A = A;
 o.D = D;
-o.nMatches = nMatches;
-o.Error = Error;
-o.nPcCovergedImg = nNeighbMatches/TotalNeighbMatches;
+o.Gad_nMatches = nMatches;
+o.Gad_Error = Error;
+o.Gad_nPcCovergedImg = nNeighbMatches/TotalNeighbMatches;
 %Uncentre reference spot YX
 x(NonemptyTiles,o.ReferenceSpotChannels) = cellfun(@(x) x(:,1:2)+o.TileCentre,...
     x(NonemptyTiles,o.ReferenceSpotChannels),'UniformOutput',false);

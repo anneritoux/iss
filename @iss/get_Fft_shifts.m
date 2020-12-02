@@ -48,7 +48,7 @@ AbsoluteMaxShift = o.RegInfo.AbsoluteMaxShift;
 AbsoluteMinShift = o.RegInfo.AbsoluteMinShift;
 
 %% now do the alignments
-for t=NonemptyTiles(:)'
+for t=NonemptyTiles
     if t == NonemptyTiles(1)
         o.Graphics = 2;     
     end

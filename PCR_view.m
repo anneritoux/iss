@@ -48,7 +48,7 @@ MyNeighb = cell(nTiles,o.nBP,o.nRounds);
 xM = cell(nTiles,o.nBP,o.nRounds);
 
 x_t = vertcat(x{t_plot,:});
-xM(t_plot,b_plot,r_plot) = {o.A(b_plot)*(x_t*o.D(:,:,t_plot,r_plot))+o.TileCentre}; 
+xM(t_plot,b_plot,r_plot) = {x_t*o.D(:,:,t_plot,r_plot,b_plot)+o.TileCentre}; 
 Neighbor(t_plot,b_plot,r_plot) = {k{t_plot,b_plot,r_plot}.knnsearch(xM{t_plot,b_plot,r_plot})};
 [~,Dist] = k{t_plot,b_plot,r_plot}.knnsearch(xM{t_plot,b_plot,r_plot});
 UseMe(t_plot,b_plot,r_plot) = {Dist<o.PcDist};                

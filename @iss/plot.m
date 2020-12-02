@@ -105,12 +105,18 @@ elseif strcmpi('Pixel',Method)
     S.uGenes = unique(S.SpotGeneName);
     S.SpotYX = o.pxSpotGlobalYX;
     S.CallMethod = 'Pixel';
+elseif strcmpi('OMP',Method)
+    S.SpotGeneName = o.GeneNames(o.ompSpotCodeNo);
+    S.uGenes = unique(S.SpotGeneName);
+    S.SpotYX = o.pxSpotGlobalYX;
+    S.CallMethod = 'OMP';    
 else
     S.SpotGeneName = o.GeneNames(o.SpotCodeNo);
     S.uGenes = unique(S.SpotGeneName);
     S.SpotYX = o.SpotGlobalYX;
     S.CallMethod = 'DotProduct';
 end
+
 S.QualOK = o.quality_threshold(S.CallMethod);
 
 S.Roi = Roi(1:4);
