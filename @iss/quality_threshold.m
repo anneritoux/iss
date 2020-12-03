@@ -13,6 +13,7 @@ if strcmpi('Prob',Method)
     %QualOK = QualOK & o.pSpotIntensity2 > o.pIntensity2Thresh;
     QualOK = o.pSpotScore>0 & o.pLogProbOverBackground+o.pQualParam1*o.pSpotScore>o.pQualThresh1 | ...
         o.pSpotScore==0 & o.pLogProbOverBackground+o.pQualParam2*o.pSpotScore>o.pQualThresh2;
+    QualOK = QualOK & o.pSpotIntensity > o.pIntensityTresh;
 elseif strcmpi('Pixel',Method)
     %QualOK = (o.pxSpotScore>o.pScoreThresh & o.pxSpotIntensity>o.pIntensityThresh2 | ...
     %o.pxSpotScore>o.pScoreThresh2 & o.pxSpotScore+o.pxLogProbOverBackground>o.pLogProbThresh2 &...
@@ -20,7 +21,8 @@ elseif strcmpi('Pixel',Method)
     %QualOK = QualOK & o.pxSpotIntensity2 > o.pIntensity2Thresh;
     QualOK = o.pxSpotScore>0 & o.pxLogProbOverBackground+o.pQualParam1*o.pxSpotScore>o.pQualThresh1 | ...
         o.pxSpotScore==0 & o.pxLogProbOverBackground+o.pQualParam2*o.pxSpotScore>o.pQualThresh2;
-% Extra last condition is for overlapping spots
+    % Extra last condition is for overlapping spots
+    QualOK = QualOK & o.pxSpotIntensity > o.pIntensityTresh;
 %| o.pSpotIntensity>1000);
 elseif strcmpi('DotProduct',Method)
     QualOK = (o.SpotCombi & o.SpotScore>o.CombiQualThresh & o.SpotIntensity>o.CombiIntensityThresh & o.SpotScoreDev>o.CombiDevThresh);
