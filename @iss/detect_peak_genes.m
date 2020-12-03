@@ -43,15 +43,25 @@ nSpots = size(GoodSpotColors,1);
 AllLogProbOverBackground = zeros(nSpots,nCodes);
 
 
-LogProbMultiplier = zeros(o.nRounds*o.nBP,nCodes);
-for g=1:nCodes
-    LogProbMultiplier(:,g) = o.UnbledCodes(g,:);
+LogProbMultiplier = zeros(nRounds*nChans,nCodes);
+if nChans == o.nBP && nRounds == o.nRounds
+    for g=1:nCodes
+        LogProbMultiplier(:,g) = o.UnbledCodes(g,:);
+    end
+    %How many squares that contribute:
+    NormFactor = double(o.nBP*o.nRounds)/double(o.nRounds+o.ScoreScale*(o.nBP*o.nRounds-o.nRounds));
+    %Normalise by this to allow valid comparison
+    LogProbMultiplier(LogProbMultiplier==0) = o.ScoreScale;
+    LogProbMultiplier = LogProbMultiplier*NormFactor;
+else
+    %If missing some channels, need all rounds/channels to contribute
+    %equal.
+    if o.ScoreScale~=1
+        error('As missing some channels or rounds, you should make o.ScoreScale=1 so all remaining rounds and channels contribute');
+    end
+    LogProbMultiplier(:) = 1;
 end
-%How many squares that contribute:
-NormFactor = double(o.nBP*o.nRounds)/double(o.nRounds+o.ScoreScale*(o.nBP*o.nRounds-o.nRounds));  
-%Normalise by this to allow valid comparison
-LogProbMultiplier(LogProbMultiplier==0) = o.ScoreScale;
-LogProbMultiplier = LogProbMultiplier*NormFactor;
+
 
 fprintf('Tile %d: Percentage of spot probabilities found:       ',t);
 for s=1:nSpots
