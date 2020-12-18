@@ -15,7 +15,7 @@ GadGroundTruth = GadGroundTruthLogical(o,'Prob');       %High only in Gad Channe
 %Use GadPeakColor not o.pGadColor(:,o.GadChannel) as deals with stitched
 %regions better.
 TruePositiveSet = GadGroundTruth &...         %Exceed thresh intensity and be a Gad gene peak
-o.GadPeakColor > o.GadColorFalsePositiveThresh & o.GadPeakSpots == 1;
+o.GadPeakColor > o.GadColorTruePositiveThresh & o.GadPeakSpots == 1;
 %TruePositiveSet = GadGroundTruth &...         %Exceed thresh intensity and be a Gad gene peak
 %o.pGadColor(:,o.GadChannel) > o.GadColorFalsePositiveThresh & o.GadPeakSpots == 1;
 GadPeakGlobalYX_TP = o.SpotGlobalYX(TruePositiveSet,:);
@@ -45,20 +45,27 @@ treeTruePositive = KDTreeSearcher(pxGadSpotsYX);
 %image.
 %I.e. of the 2980 true positives in Gad channel image, how many spots
 %identified as Gad using OMP are close to these. 
-MaxDistFromPeak = o.ExtractR2;
-TruePositiveIndex = unique(pxGadSpotsIndex(Index2_TP(Dist_TP<MaxDistFromPeak)));
+TruePositiveIndex = unique(pxGadSpotsIndex(Index2_TP(Dist_TP<o.GadTruePosMaxSep)));
 
 %False positive if spot is further from GadChannel peak than filter size
 %, has GadChannelColor below o.GadColorFalsePositiveThresh in below and assigned as Gad by OMP.
 treeFalsePositive = KDTreeSearcher(GadPeakGlobalYX_FP);
 [Index2_FP,Dist_FP] = treeFalsePositive.knnsearch(pxGadSpotsYX);
-FalsePositiveIndex = unique(pxGadSpotsIndex(Dist_FP>MaxDistFromPeak));
+FalsePositiveIndex = unique(pxGadSpotsIndex(Dist_FP>o.GadFalsePosMinSep));
 
 o.pxGadTruePositiveSet = false(SetSize);
 o.pxGadTruePositiveSet(TruePositiveIndex) = true;
 o.pxGadFalsePositiveSet = false(SetSize);
 o.pxGadFalsePositiveSet(FalsePositiveIndex) = true;
 o.pxGadFalsePositiveSet = o.pxGadFalsePositiveSet&o.pxGadColor(:,o.GadChannel)<o.GadColorFalsePositiveThresh;
+
+%Save GadTruePositive that we missed
+FOUNDTruePositive = Dist_TP<o.GadTruePosMaxSep;
+MISSEDTruePositive = Dist_TP>=o.GadTruePosMaxSep;
+TruePositiveSetIndex = find(TruePositiveSet);
+o.GadPeakFound = zeros(size(o.GadPeakSpots));
+o.GadPeakFound(TruePositiveSetIndex(FOUNDTruePositive))=1;
+o.GadPeakFound(TruePositiveSetIndex(MISSEDTruePositive))=2;
 
 
 end

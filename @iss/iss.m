@@ -782,7 +782,7 @@ classdef iss
         %ScoreScale is the contribution each round/channel not in Unbled
         %code contributes to LogProbOverBackground compared to each
         %round/channel in Unbled code
-        ScoreScale = 1;
+        ScoreScale = 0;
         
         %Values used in quality_threshold for prob method
         pQualThresh1 = -53.3786; %Optimized using PyTorch
@@ -913,6 +913,7 @@ classdef iss
         GadPeakColor;   %Intensity in Gad round/Gad channel of SpotGlobalYX. 
                         %It is zero if not a peak in Gad channel.
                         %I.e. if GadPeakSpots==0
+        GadPeakFound;   %This is 1 if we have found this true positive spot and 2 if not.
         pLocalTile;     %local tile for SpotGlobalYX
         pGadColor       %(s,b) is the intensity of spot SpotGlobalYX(s,:)
                         %in channel b of gad round
@@ -920,8 +921,14 @@ classdef iss
         %GadFalsePositiveSet should be Gad. Sets are obtained from 
         %GadGroundTruthLogical.m
         GadColorTruePositiveThresh = 250;
+        %To be true positive, must be closer to Gad local maxima than
+        %GadTruePosMaxSep.
+        GadTruePosMaxSep = 6;
         pxGadTruePositiveSet;
-        GadColorFalsePositiveThresh = 250;
+        GadColorFalsePositiveThresh = 100;
+        %To be false positive, must be further from Gad local maxima than
+        %GadFalsePosMinSep.
+        GadFalsePosMinSep = 10;     
         pxGadFalsePositiveSet;
                         
         %% OMP
@@ -994,7 +1001,7 @@ classdef iss
         
         %Spots must have either ompSpotIntensity>ompIntensityThresh or 
         %ompNeighbNonZeros>ompNeighbThresh
-        ompIntensityThresh=1650;  %Optimized using PyTorch
+        ompIntensityThresh=1.45;  %Optimized using PyTorch
         ompIntensity2Thresh = 0;
         ompNeighbThresh=17;        %Optimized using PyTorch
         ompNeighbThresh2=2;

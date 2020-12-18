@@ -6,6 +6,9 @@ function [SpotIntensity, MedianIntensity] = get_spot_intensity(o,SpotCodeNo,Spot
 %mean(SpotCode2(InCharCode))-mean(SpotCode2(NotInCharCode))
 %Hence a high SpotIntensity indicates a high intensity and a good match.
 
+
+SpotColors = (double(SpotColors)-o.SHIFT)./o.SCALE; %Z-score first
+
 nCodes = length(o.GeneNames);
 CodeIndex = zeros(nCodes,o.nRounds);
 NonCodeIndex = cell(nCodes,1);
@@ -24,6 +27,7 @@ MedianIntensity = zeros(nSpots,1);
 fprintf('Percentage of spot intensities found:       ');
 for s=1:nSpots
     SpotCode = SpotColors(s,:);
+    %SpotIntensity(s) = mean(SpotCode(CodeIndex(SpotCodeNo(s),:)));
     %SpotIntensity(s) = mean(SpotCode(CodeIndex(SpotCodeNo(s),:)))-mean(SpotCode(NonCodeIndex{SpotCodeNo(s)}));
     %MedianIntensity(s) = median(SpotCode(CodeIndex(SpotCodeNo(s),:)));
     SpotIntensity(s) = median(SpotCode(CodeIndex(SpotCodeNo(s),:)));
