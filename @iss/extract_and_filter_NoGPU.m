@@ -205,9 +205,12 @@ end
                 else
 
                     I = zeros(o.TileSz,o.TileSz,o.nZ);
+                    BadColumns = [];
                     for z = 1:o.nZ
                         iPlane = bfreader.getIndex(z-1, c-1, 0)+1;
                         I(:,:,z) = bfGetPlane(bfreader, iPlane);
+                        [I(:,:,z),zBadColumns] = StripHack_raw(o,I(:,:,z));
+                        BadColumns = [BadColumns,setdiff(zBadColumns,BadColumns)];
                     end
 
                     %Make noise white first by divding amplitude of FT
@@ -227,10 +230,12 @@ end
                     %Scaling so fills uint16 range.
                     if c == o.DapiChannel && r == o.ReferenceRound
                         IFS = uint16(imtophat(I, DapiSE));
+                        IFS(:,BadColumns,:)=0;
                         clearvars I  %Free up memory
                     else
                         I = single(padarray(I,(size(SE)-1)/2,'replicate','both'));
                         IFS = convn(I,SE,'valid');
+                        IFS(:,BadColumns,:)=0;
                         clearvars I  %Free up memory
                         %Finds o.ExtractScale from first image and uses this
                         %value for the rest
@@ -244,14 +249,13 @@ end
                         end
                         IFS = IFS*o.ExtractScale;
                         %Determine auto thresholds
-                        o.AutoThresh(t,c,r) = median(abs(IFS(:)))*o.AutoThreshMultiplier;
+                        AbridgedIFS = IFS(:,setdiff(1:o.TileSz,BadColumns),:);
+                        o.AutoThresh(t,c,r) = median(abs(AbridgedIFS(:)))*o.AutoThreshMultiplier;
                         %Add o.TilePixelValueShift so keep negative pixels for background analysis
 
                         if r ~= o.ReferenceRound
                             %Get histogram data
-                            IFS = int32(IFS);
-                            %AbridgedBaseIm = IFS(:,:,8:15);
-                            o.HistCounts(:,c,r) = o.HistCounts(:,c,r)+histc(IFS(:),o.HistValues);
+                            o.HistCounts(:,c,r) = o.HistCounts(:,c,r)+histc(AbridgedIFS(:),o.HistValues);
                         end
                         IFS = IFS+o.TilePixelValueShift;
                         nPixelsOutsideRange = sum(IFS(:)>uint16(inf));
