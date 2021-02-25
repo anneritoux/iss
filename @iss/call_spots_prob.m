@@ -51,7 +51,7 @@ DiagMeasure = 0;
 nTries = 1;
 while DiagMeasure<nChans && nTries<nChans
     SpotColors = bsxfun(@rdivide, o.cSpotColors, p);
-    
+    pFinal = p;
     % now we cluster the intensity vectors to estimate the Bleed Matrix
     NormBleedMatrix = zeros(nChans,nChans,nRounds); % (Measured, Real, Round)
     if strcmpi(o.BleedMatrixType,'Separate')
@@ -119,7 +119,7 @@ end
 if DiagMeasure<nChans
     error('Bleed matrix not diagonal')
 end
-
+p = pFinal;
 %Unnormalise Bleed matrices by multiplying rows by percentiles
 BleedMatrix = zeros(nChans,nChans,nRounds);
 for r=1:o.nRounds
@@ -221,7 +221,7 @@ o.UnbledCodes = UnbledCodes;
 %Need to make hist data symmetric and include all data - 0 in middle
 %This assumes -NewValMax < min(o.HistValues).
 [NonZeroValIdx,~,~] = ind2sub(size(o.HistCounts),find(o.HistCounts>0));
-NewValMax = o.HistValues(max((NonZeroValIdx)));
+NewValMax = max(max(o.cSpotColors(:)),o.HistValues(max((NonZeroValIdx))));
 o.SymmHistValues = -NewValMax:NewValMax;
 nBins = length(o.SymmHistValues);
 nPixels = sum(o.HistCounts(:,1,1));
