@@ -160,7 +160,7 @@ for z = Roi(5):Roi(6)
 end
 
 o.PlotZThick=0;           %See all spots from o.PlotZThick+/- o.PlotZThick on single plane
-o.plot3D(BackgroundImage);       %plot from call_spots
+o.plot(BackgroundImage);       %plot from call_spots
 
 %Can interactively change plot by changing o or S.ZThick and then running
 %iss_change_plot(o,'CallSpotsMethod')
