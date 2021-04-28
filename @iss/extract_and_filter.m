@@ -27,6 +27,7 @@ end
 %     SE = h2D.*hzdirection;
 
     AnchorChannelsToUse = [o.DapiChannel,o.AnchorChannel];
+    UsedEmptyTiles = false;   %If running for only a few tiles, this will change to true.
     
     
     for r = 1:o.nRounds+o.nExtraRounds
@@ -161,6 +162,13 @@ end
                 elseif r == o.ReferenceRound && ~ismember(c,AnchorChannelsToUse)
                     %Only need anchor and dapi tiles in reference round
                     continue;
+                elseif min(size(o.EmptyTiles))==1 && ~ismember(t,o.EmptyTiles)
+                    %If specify o.EmptyTiles, only run for tiles in o.EmptyTiles
+                    o.TilePosYXC(Index,:) = [TilePosYX(t,:),c];          %Think first Z plane is the highest
+                    o.TileFiles{r,o.TilePosYXC(Index,1), o.TilePosYXC(Index,2),o.TilePosYXC(Index,3)} = fName{Index};
+                    UsedEmptyTiles = true;
+                    EmptyTilesOrig = o.EmptyTiles;
+                    continue;
                 end
                                                                         
                 %TopHat SE
@@ -242,9 +250,13 @@ end
             
         end
         
+
+    end
     
     o.EmptyTiles = cellfun(@isempty, squeeze(o.TileFiles(o.ReferenceRound,:,:,1)))*0;
-
+    if UsedEmptyTiles
+        o.EmptyTiles(:) = true;
+        o.EmptyTiles(EmptyTilesOrig) = false;
     end
     
     %Plot boxplots showing distribution af AutoThresholds

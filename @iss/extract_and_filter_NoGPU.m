@@ -10,7 +10,7 @@ end
 %%
     o.TileFiles = cell(o.nRounds+o.nExtraRounds,1,1,1); % 1,1,1 because we don't yet know how many tiles
     AnchorChannelsToUse = [o.DapiChannel,o.AnchorChannel];
-    
+    UsedEmptyTiles = false;   %If running for only a few tiles, this will change to true.
     
     for r = 1:o.nRounds+o.nExtraRounds
         imfile = fullfile(o.InputDirectory, [o.FileBase{r}, o.RawFileExtension]);
@@ -183,6 +183,13 @@ end
                 elseif r == o.ReferenceRound && ~ismember(c,AnchorChannelsToUse)
                     %Only need anchor and dapi tiles in reference round
                     continue;
+                elseif min(size(o.EmptyTiles))==1 && ~ismember(t,o.EmptyTiles)
+                    %If specify o.EmptyTiles as list of tile numbers, only run for tiles in o.EmptyTiles
+                    o.TilePosYXC(Index,:) = [TilePosYX(t,:),c];          %Think first Z plane is the highest
+                    o.TileFiles{r,o.TilePosYXC(Index,1), o.TilePosYXC(Index,2),o.TilePosYXC(Index,3)} = fName{Index};
+                    UsedEmptyTiles = true;
+                    EmptyTilesOrig = o.EmptyTiles;        
+                    continue;
                 end
                                                                         
                 %TopHat SE
@@ -194,7 +201,9 @@ end
 %                         SE = get_3DSE(o.ExtractR1YX,o.ExtractR1Z,o.ExtractR2YX,o.ExtractR2Z);
 %                 end
 
-                if strcmpi(o.ExtractScale, 'auto') && (t>1 || c~=ChannelOrder(1) || r>1) && ~(r==o.ReferenceRound && c == o.DapiChannel)
+                if strcmpi(o.ExtractScale, 'auto') && ((t>1 && UsedEmptyTiles == false) || ...
+                        (t>min(o.EmptyTiles) && UsedEmptyTiles == true) || c~=ChannelOrder(1) || r>1) &&...
+                        ~(r==o.ReferenceRound && c == o.DapiChannel)
                     error(['Some tiles in imaging rounds already exist, but o.ExtractScale = auto.'...
                         '\nThis will result in different scalings used for different tiles.'...
                         '\nIf tiles up to this point were obtained with a manual value of o.ExtractScale,'...
@@ -305,11 +314,15 @@ end
             bfreader.close();
             
         end
-        
-    
-    o.EmptyTiles = cellfun(@isempty, squeeze(o.TileFiles(o.ReferenceRound,:,:,1)))*0;
 
     end
+    
+    o.EmptyTiles = cellfun(@isempty, squeeze(o.TileFiles(o.ReferenceRound,:,:,1)))*0;
+    if UsedEmptyTiles
+        o.EmptyTiles(:) = true;
+        o.EmptyTiles(EmptyTilesOrig) = false;
+    end
+
     
     %Plot boxplots showing distribution af AutoThresholds
     if o.Graphics

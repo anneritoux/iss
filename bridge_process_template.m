@@ -13,6 +13,7 @@ o.InitialShiftChannel = 4;      %Channel to use to find initial shifts between r
 o.ExtractScaleChannel = 5;		%Channel which is used to get scaling for imaging rounds.
 o.RawFileExtension = '.nd2';    %Format of raw data
 o.LogToFile = 1;                %Set to 1 if you want to save command window to txt file, else set to 0.
+%o.EmptyTiles = [1,5,7];        %Can specify tiles to work with if don't want to get tiles for all data.
 
 %% File Names
 %CHECK BEFORE EACH RUN
@@ -76,6 +77,7 @@ o.MaxWaitTime = 21600;
 % catch
 %     o = o.extract_and_filter_NoGPU;
 % end
+save(fullfile(o.OutputDirectory, 'oExtract'), 'o', '-v7.3');
 o = o.extract_and_filter_NoGPU;
 save(fullfile(o.OutputDirectory, 'oExtract'), 'o', '-v7.3');
 
