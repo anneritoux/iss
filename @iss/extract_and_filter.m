@@ -125,6 +125,9 @@ end
             end
         end
         
+        %Tile index in nd2 file different to index in o.EmptyTiles
+        t_save_value = sub2ind([MaxY,MaxX],TilePosYX(:,1),TilePosYX(:,2));
+        
         o.TilePosYXC = zeros(nSerieswPos*nChannels,3);
 
         % set up filename grid for this round
@@ -132,14 +135,15 @@ end
         
         Index = 1;
         %parfor t = 1:nSerieswPos  
-        for t = 1:nSerieswPos  
+        for t_index = 1:nSerieswPos  
+            t = t_save_value(t_index);
                        
             % a new reader per worker
             bfreader = javaObject('loci.formats.Memoizer', bfGetReader(), 0);
             % use the memo file cached before
             bfreader.setId(imfile);
 
-            bfreader.setSeries(scene*t-1);
+            bfreader.setSeries(scene*t_index-1);
             for c = 1:nChannels
                 tic
                 fName{Index} = fullfile(o.TileDirectory, ...
@@ -147,7 +151,7 @@ end
                 
                 if exist(fName{Index}, 'file')
                     fprintf('Round %d, tile %d, channel %d already done.\n', r, t, c);
-                    o.TilePosYXC(Index,:) = [TilePosYX(t,:),c];          %Think first Z plane is the highest
+                    o.TilePosYXC(Index,:) = [TilePosYX(t_index,:),c];          %Think first Z plane is the highest
                     o.TileFiles{r,o.TilePosYXC(Index,1), o.TilePosYXC(Index,2),o.TilePosYXC(Index,3)} = fName{Index};
                     if o.AutoThresh(t,c,r) == 0
                         if c == o.DapiChannel && r == o.ReferenceRound; continue; end
@@ -164,10 +168,11 @@ end
                     continue;
                 elseif min(size(o.EmptyTiles))==1 && ~ismember(t,o.EmptyTiles)
                     %If specify o.EmptyTiles, only run for tiles in o.EmptyTiles
-                    o.TilePosYXC(Index,:) = [TilePosYX(t,:),c];          %Think first Z plane is the highest
+                    o.TilePosYXC(Index,:) = [TilePosYX(t_index,:),c];          %Think first Z plane is the highest
                     o.TileFiles{r,o.TilePosYXC(Index,1), o.TilePosYXC(Index,2),o.TilePosYXC(Index,3)} = fName{Index};
                     UsedEmptyTiles = true;
                     EmptyTilesOrig = o.EmptyTiles;
+                    Index = Index+1;
                     continue;
                 end
                                                                         
@@ -240,7 +245,7 @@ end
                 end
                 
 
-                o.TilePosYXC(Index,:) = [TilePosYX(t,:),c];          %Think first Z plane is the highest
+                o.TilePosYXC(Index,:) = [TilePosYX(t_index,:),c];          %Think first Z plane is the highest
                 o.TileFiles{r,o.TilePosYXC(Index,1), o.TilePosYXC(Index,2),o.TilePosYXC(Index,3)} = fName{Index};
                 fprintf('Round %d tile %d colour channel %d finished.\n', r, t, c);                                               
                 Index = Index+1; 
