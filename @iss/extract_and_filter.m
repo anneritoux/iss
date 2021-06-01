@@ -107,7 +107,13 @@ end
         
         
             % find coordinates for each tile
-            o.TileInitialPosYX = fliplr(1+round((xypos - min(xypos))./[xStep yStep]));
+            if isempty(o.TileInitialPosYX)
+                if nSeries==1
+                    o.TileInitialPosYX = [1,1];
+                else
+                    o.TileInitialPosYX = fliplr(1+round((xypos - min(xypos))./[xStep yStep]));
+                end
+            end
             TilePosYX = o.TileInitialPosYX;
             %Below is a safeguard incase wrong positions found - can do
             %this as we know what the answer should be.

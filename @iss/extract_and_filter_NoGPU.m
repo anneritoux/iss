@@ -89,7 +89,6 @@ end
             if isempty(o.PixelsOutsideTiffRangeExtractScale)
                 o.PixelsOutsideTiffRangeExtractScale = nan(nSerieswPos,nChannels,o.nRounds+o.nExtraRounds);
             end
-            
             % find x and y grid spacing as median of distances that are about
             % right
             dx = xypos(:,1)-xypos(:,1)'; % all pairs of x distances
@@ -99,7 +98,13 @@ end
         
         
             % find coordinates for each tile
-            o.TileInitialPosYX = fliplr(1+round((xypos - min(xypos))./[xStep yStep]));
+            if isempty(o.TileInitialPosYX)
+                if nSeries==1
+                    o.TileInitialPosYX = [1,1];
+                else
+                    o.TileInitialPosYX = fliplr(1+round((xypos - min(xypos))./[xStep yStep]));
+                end
+            end
             TilePosYX = o.TileInitialPosYX;
             %Below is a safeguard incase wrong positions found - can do
             %this as we know what the answer should be.
@@ -115,7 +120,6 @@ end
                 TilePosX = repmat([flip(1:MaxX),1:MaxX],1,ceil(MaxY/2));
                 TilePosYX(1:nSeries,2) = TilePosX(1:nSeries);
             end
-            
             %New filter
             if strcmpi(o.ExtractR1, 'auto')
                 o.ExtractR1 = round(0.5/o.XYpixelsize);
@@ -207,7 +211,7 @@ end
 %                 end
 
                 if strcmpi(o.ExtractScale, 'auto') && ((t_index>1 && UsedEmptyTiles == false) || ...
-                        (t_index>min(find(ismember(t,o.EmptyTiles))) && UsedEmptyTiles == true) ||...
+                        (t_index>min([0,find(ismember(t,o.EmptyTiles))]) && UsedEmptyTiles == true) ||...
                         c~=ChannelOrder(1) || r>1) && ~(r==o.ReferenceRound && c == o.DapiChannel)
                     error(['Some tiles in imaging rounds already exist, but o.ExtractScale = auto.'...
                         '\nThis will result in different scalings used for different tiles.'...
