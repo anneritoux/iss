@@ -162,7 +162,11 @@ end
 %number of spots on tile/round with least spots.
 AllBaseSpotNo = cell2mat(cellfun(@size,AllBaseLocalYXZ,'uni',false));
 o.AllBaseSpotNo = AllBaseSpotNo(:,1:2:o.nRounds*2,:);
-MinColorChannelSpotNo = min(min(o.AllBaseSpotNo(Tiles,:,:)),[],3);
+if length(Tiles)==1
+    MinColorChannelSpotNo = squeeze(min(o.AllBaseSpotNo(Tiles,:,:)))';
+else
+    MinColorChannelSpotNo = min(min(o.AllBaseSpotNo(Tiles,:,:)),[],3);
+end
 if ~ismember(string(o.InitialShiftChannel),string(o.UseRounds))
     [~,o.InitialShiftChannel] = max(MinColorChannelSpotNo);
 end
@@ -204,7 +208,7 @@ for t=1:nTiles
 end
 
 for r = o.UseRounds
-    [o.D0(:,:,r), OutlierShifts(:,:,r)] = o.AmendShifts(o.D0(:,:,r),Scores(:,r),'FindSpots');
+    [o.D0(Tiles,:,r), OutlierShifts(Tiles,:,r)] = o.AmendShifts(o.D0(Tiles,:,r),Scores(Tiles,r),'FindSpots');
 end
 
 o.FindSpotsInfo.Scores = Scores;
