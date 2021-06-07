@@ -62,14 +62,14 @@ while DiagMeasure<nChans && nTries<nChans
     SpotColors = bsxfun(@rdivide, o.cSpotColors, p);
     
     % now we cluster the intensity vectors to estimate the Bleed Matrix
-    BleedMatrix = zeros(nChans,nChans,nRounds); % (Measured, Real, Round)
+    BleedMatrix = nan(o.nBP,o.nBP,nRounds); % (Measured, Real, Round)
     if strcmpi(o.BleedMatrixType,'Separate')
         for r=o.UseRounds
             m = squeeze(SpotColors(o.cSpotIsolated,o.UseChannels,r)); % data: nCodes by nBases
             
             [Cluster, v, s2] = ScaledKMeans(m, eye(nChans));
             for i=1:nChans
-                BleedMatrix(:,i,find(o.UseRounds==r)) = v(i,:) * sqrt(s2(i));
+                BleedMatrix(o.UseChannels,o.UseChannels(i),o.UseRounds==r) = v(i,:) * sqrt(s2(i));
             end
         end
         
@@ -78,7 +78,7 @@ while DiagMeasure<nChans && nTries<nChans
         m = squeeze(reshape(m,[],size(m,1)*nRounds,nChans));
         [Cluster, v, s2] = ScaledKMeans(m, eye(nChans));
         for i=1:nChans
-            BleedMatrix(:,i,1) = v(i,:) * sqrt(s2(i));
+            BleedMatrix(o.UseChannels,o.UseChannels(i),1) = v(i,:) * sqrt(s2(i));
         end
         for r=2:nRounds
             BleedMatrix(:,:,r) = BleedMatrix(:,:,1);
@@ -95,10 +95,10 @@ while DiagMeasure<nChans && nTries<nChans
             imagesc(BleedMatrix(:,:,i));
             caxis([0 1]);
             title(sprintf('Round %d', o.UseRounds(i)));
-            set(gca, 'xtick', 1:nChans);
-            set(gca, 'XTickLabel', o.bpLabels(o.UseChannels));
-            set(gca, 'ytick', 1:nChans);
-            set(gca, 'yTickLabel', o.bpLabels(o.UseChannels));
+            set(gca, 'xtick', 1:o.nBP);
+            set(gca, 'XTickLabel', o.bpLabels);
+            set(gca, 'ytick', 1:o.nBP);
+            set(gca, 'yTickLabel', o.bpLabels);
             if i==4
                 xlabel('Actual')
                 ylabel('Measured');
@@ -114,7 +114,7 @@ while DiagMeasure<nChans && nTries<nChans
     
     %If bleed matrix not diagonal, try modifying percentiles of weakest
     %channels
-    [~,CurrentBleedMatrixMaxChannel] = max(BleedMatrix(:,:,1));
+    [~,CurrentBleedMatrixMaxChannel] = max(BleedMatrix(o.UseChannels,o.UseChannels,1));
     DiagMeasure = sum(CurrentBleedMatrixMaxChannel==1:nChans);      %In column i, max square should be in row i if diagonal
     [~,MinIntensityChannel] = min(mean(squeeze(p)'));
     p(:,MinIntensityChannel,:) = p(:,MinIntensityChannel,:)*pScale;
@@ -182,14 +182,14 @@ end
 % %     end
 % end
 
-BledCodes = zeros(nCodes, o.nBP*o.nRounds);
+BledCodes = nan(nCodes, o.nBP*o.nRounds);
 UnbledCodes = zeros(nCodes, o.nBP*o.nRounds);
 % make starting point using bleed vectors (means for each base on each day)
 for i=1:nCodes
     for r=1:nRounds
         if any(o.UseChannels == NumericalCode(i,o.UseRounds(r))) == 0 continue; end
-        BledCodes(i,o.UseChannels+o.nBP*(r-1)) = BleedMatrix(:, find(o.UseChannels == NumericalCode(i,o.UseRounds(r))), r);
-        UnbledCodes(i,o.UseChannels(find(o.UseChannels == NumericalCode(i,o.UseRounds(r))))+o.nBP*(r-1)) = 1;
+        BledCodes(i,o.UseChannels+o.nBP*(r-1)) = BleedMatrix(o.UseChannels, NumericalCode(i,o.UseRounds(r)), r);
+        UnbledCodes(i,NumericalCode(i,o.UseRounds(r))+o.nBP*(r-1)) = 1;
     end
 end
 
@@ -202,8 +202,9 @@ if strcmpi(o.CallSpotsCodeNorm,'Round')
     NormBledCodes = reshape(BledCodes,[nCodes,o.nBP,nRounds]);
     for g=1:nCodes
         for r=1:nRounds
+            Norm =  sqrt(nansum(squeeze(NormBledCodes(g,:,o.UseRounds(r))).^2));
             NormBledCodes(g,:,o.UseRounds(r)) = NormBledCodes(g,:,o.UseRounds(r))/...
-                norm(squeeze(NormBledCodes(g,:,o.UseRounds(r))));
+                Norm;
         end
     end
     NormBledCodes = reshape(NormBledCodes,[nCodes,o.nBP*nRounds]);
@@ -212,14 +213,15 @@ if strcmpi(o.CallSpotsCodeNorm,'Round')
     NormSpotColors = SpotColors;
     for s=1:nSpots
         for r=1:nRounds
+            Norm = sqrt(nansum(squeeze(NormSpotColors(s,:,o.UseRounds(r))).^2));
             NormSpotColors(s,:,o.UseRounds(r)) = NormSpotColors(s,:,o.UseRounds(r))/...
-                norm(squeeze(NormSpotColors(s,:,o.UseRounds(r))));
+                Norm;
         end
     end
     NormFlatSpotColors = NormSpotColors(:,:);
     
 else
-    NormBledCodes = bsxfun(@rdivide, BledCodes, sqrt(sum(BledCodes.^2,2)));
+    NormBledCodes = bsxfun(@rdivide, BledCodes, sqrt(nansum(BledCodes.^2,2)));
     NormFlatSpotColors = bsxfun(@rdivide, FlatSpotColors, o.SpotIntensity);    
 end
 %Get rid of NaN values

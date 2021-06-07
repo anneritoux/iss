@@ -46,85 +46,12 @@ else
     warning('Wrong o.BleedMatrixType entry, should be either Separate or Single')
 end
 
-pScale = median(p(:))/10;
-DiagMeasure = 0;
-nTries = 1;
-while DiagMeasure<nChans && nTries<nChans
-    SpotColors = bsxfun(@rdivide, o.cSpotColors, p);
-    pFinal = p;
-    % now we cluster the intensity vectors to estimate the Bleed Matrix
-    NormBleedMatrix = zeros(nChans,nChans,nRounds); % (Measured, Real, Round)
-    if strcmpi(o.BleedMatrixType,'Separate')
-        for r=o.UseRounds
-            m = squeeze(SpotColors(o.cSpotIsolated,o.UseChannels,r)); % data: nCodes by nBases
-            
-            [Cluster, v, s2] = ScaledKMeans(m, eye(nChans));
-            for i=1:nChans
-                NormBleedMatrix(:,i,find(o.UseRounds==r)) = v(i,:) * sqrt(s2(i));
-            end
-        end
-        
-    elseif strcmpi(o.BleedMatrixType,'Single')
-        m = permute(squeeze(squeeze(SpotColors(o.cSpotIsolated,o.UseChannels,o.UseRounds))),[1 3 2]);
-        m = squeeze(reshape(m,[],size(m,1)*nRounds,nChans));
-        [Cluster, v, s2] = ScaledKMeans(m, eye(nChans));
-        for i=1:nChans
-            NormBleedMatrix(:,i,1) = v(i,:) * sqrt(s2(i));
-        end
-        for r=2:nRounds
-            NormBleedMatrix(:,:,r) = NormBleedMatrix(:,:,1);
-        end
-        
-    else
-        warning('Wrong o.BleedMatrixType entry, should be either Separate or Single')
-    end
-    
-    if o.Graphics
-        figure(98043715+nTries); clf
-        for i=1:nRounds
-            subplot(ceil(nRounds/3),3,i);
-            imagesc(NormBleedMatrix(:,:,i));
-            caxis([0 1]);
-            title(sprintf('Round %d', o.UseRounds(i)));
-            set(gca, 'xtick', 1:nChans);
-            set(gca, 'XTickLabel', o.bpLabels(o.UseChannels));
-            set(gca, 'ytick', 1:nChans);
-            set(gca, 'yTickLabel', o.bpLabels(o.UseChannels));
-            if i==4
-                xlabel('Actual')
-                ylabel('Measured');
-            end
-        end
-        drawnow;
-        %     subplot(2,3,6);
-        %     caxis([0 1]);
-        %     axis off
-        %     colormap hot
-        % %     colorbar
-    end
-    
-    %If bleed matrix not diagonal, try modifying percentiles of weakest
-    %channels
-    [~,CurrentBleedMatrixMaxChannel] = max(NormBleedMatrix(:,:,1));
-    DiagMeasure = sum(CurrentBleedMatrixMaxChannel==1:nChans);      %In column i, max square should be in row i if diagonal
-    [~,MinIntensityChannel] = min(mean(squeeze(p)'));
-    p(:,MinIntensityChannel,:) = p(:,MinIntensityChannel,:)*pScale;
-    if DiagMeasure<nChans
-        warning('Bleed matrix not diagonal - modifying percentile of channel '+string(MinIntensityChannel-1))
-    elseif DiagMeasure>=nChans && nTries>1
-        fprintf('Bleed matrix now diagonal\n');
-    end
-    nTries = nTries+1;
-end
-if DiagMeasure<nChans
-    error('Bleed matrix not diagonal')
-end
-p = pFinal;
+NormBleedMatrix = o.BleedMatrix;
 %Unnormalise Bleed matrices by multiplying rows by percentiles
-BleedMatrix = zeros(nChans,nChans,nRounds);
-for r=1:o.nRounds
+BleedMatrix = zeros(o.nBP,o.nBP,nRounds);
+for r=1:nRounds
     for b=1:o.nBP
-        BleedMatrix(b,:,r) = p(:,b,r)*NormBleedMatrix(b,:,r);
+        BleedMatrix(b,:,r) = p(:,b,o.UseRounds(r))*NormBleedMatrix(b,:,r);
     end
 end
 
@@ -150,8 +77,6 @@ if o.Graphics
 %     colormap hot
 % %     colorbar
 end
-
-o.BleedMatrix = NormBleedMatrix;
 o.pBleedMatrix = BleedMatrix;
 
 %% Get BledCodes for each gene
@@ -200,14 +125,14 @@ for r=1:o.nRounds
     end
 end
 
-BledCodes = zeros(nCodes, o.nBP*o.nRounds);
+BledCodes = nan(nCodes, o.nBP*o.nRounds);
 UnbledCodes = zeros(nCodes, o.nBP*o.nRounds);
 % make starting point using bleed vectors (means for each base on each day)
 for i=1:nCodes
     for r=1:nRounds
         if any(o.UseChannels == NumericalCode(i,o.UseRounds(r))) == 0 continue; end
-        BledCodes(i,o.UseChannels+o.nBP*(r-1)) = BleedMatrix(:, find(o.UseChannels == NumericalCode(i,o.UseRounds(r))), r);
-        UnbledCodes(i,o.UseChannels(find(o.UseChannels == NumericalCode(i,o.UseRounds(r))))+o.nBP*(r-1)) = 1;
+        BledCodes(i,o.UseChannels+o.nBP*(r-1)) = BleedMatrix(o.UseChannels, NumericalCode(i,o.UseRounds(r)), r);
+        UnbledCodes(i,NumericalCode(i,o.UseRounds(r))+o.nBP*(r-1)) = 1;
     end
 end
 
@@ -246,7 +171,7 @@ for GeneNo = 1:nCodes
     BledCode = reshape(o.pBledCodes(GeneNo,:),[o.nBP,o.nRounds]);
     numCharCode = str2double(regexp(cell2mat(o.CharCodes(GeneNo)),'\d','match'))+1;
 
-    for b=1:o.nBP
+    for b=o.UseChannels
         for r=1:o.nRounds
             g = BledCode(b,r);
             if numCharCode(r)==b
@@ -266,7 +191,7 @@ end
 %Store convolution results as look up table
 LookupTable = zeros(length(x),nCodes,o.nBP,o.nRounds);
 fprintf('\nDoing convolutions for Channel  ');
-for b=1:o.nBP
+for b=o.UseChannels
     fprintf('\b%d',b);
     for r=1:o.nRounds
         LookupTable(:,:,b,r)=log(conv2(o.LambdaDist(:,:,b,r),o.HistProbs(:,b,r),'same'));
@@ -279,18 +204,18 @@ nSpots = size(o.cSpotColors,1);
 LogProb = zeros(nSpots,nCodes);
 BackgroundLogProb = zeros(nSpots,1);
 
-gChannelIndex = repmat(1:o.nBP,1,o.nRounds);
-gRoundIndex = repelem(1:o.nRounds,1,o.nBP);
+gChannelIndex = repmat(o.UseChannels,1,nRounds);
+gRoundIndex = repelem(o.UseRounds,1,nChans);
 ChannelIndex = repmat(gChannelIndex,1,nCodes);
 RoundIndex = repmat(gRoundIndex,1,nCodes);
-GeneIndex = repelem(1:nCodes,1,o.nRounds*o.nBP);
+GeneIndex = repelem(1:nCodes,1,nRounds*nChans);
 HistZeroIndex = find(o.SymmHistValues == 0);            %As HistProbs is of different length to x
-
+SpotColors = o.cSpotColors(:,o.UseChannels,o.UseRounds);
 for s=1:nSpots
-    SpotIndex = repmat(o.ZeroIndex-1+o.cSpotColors(s,:),1,nCodes); %-1 due to matlab indexing I think
+    SpotIndex = repmat(o.ZeroIndex-1+SpotColors(s,:),1,nCodes); %-1 due to matlab indexing I think
     Indices = sub2ind(size(LookupTable),SpotIndex,GeneIndex,ChannelIndex,RoundIndex);
-    LogProb(s,:)=sum(reshape(LookupTable(Indices),[o.nRounds*o.nBP,nCodes]));
-    BackgroundIndices = sub2ind(size(o.HistProbs),HistZeroIndex+o.cSpotColors(s,:),gChannelIndex,gRoundIndex);
+    LogProb(s,:)=sum(reshape(LookupTable(Indices),[nRounds*nChans,nCodes]));
+    BackgroundIndices = sub2ind(size(o.HistProbs),HistZeroIndex+SpotColors(s,:),gChannelIndex,gRoundIndex);
     BackgroundLogProb(s) = sum(log(o.HistProbs(BackgroundIndices)));
 end
 [LogProb,SpotCodeNo] = sort(LogProb,2,'descend');
