@@ -136,7 +136,8 @@ for t=1:nTiles
             Spots = o.detect_spots(BaseIm,t,b,r);
             %Scale so all in terms of XY pixel size. Import for PCR as find
             %nearest neighbours
-            AllBaseLocalYXZ(t,b,r) = {Spots.*[1,1,o.Zpixelsize/o.XYpixelsize]};
+            Use = Spots(:,3)~=1;  %Exclude first z-plane as sometimes contains loads of spots.
+            AllBaseLocalYXZ(t,b,r) = {Spots(Use,:).*[1,1,o.Zpixelsize/o.XYpixelsize]};
         end        
     end      
 end

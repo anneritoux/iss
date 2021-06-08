@@ -54,7 +54,11 @@ for t=NonemptyTiles
     else
         AnchorImSm = AnchorIm;
     end
-    [o.RawLocalYXZ{t}, o.RawIsolated{t}] = o.detect_spots(AnchorImSm,t,o.AnchorChannel,rr);
+    [tRawLocalYXZ, tRawIsolated] = o.detect_spots(AnchorImSm,t,o.AnchorChannel,rr);
+    %Exclude first z-plane as sometimes contains loads of spots.
+    Use = tRawLocalYXZ(:,3)~=1;
+    o.RawLocalYXZ{t} = tRawLocalYXZ(Use,:);
+    o.RawIsolated{t} = tRawIsolated(Use);
 end
 fprintf('\n');
 %% get arrays ready
