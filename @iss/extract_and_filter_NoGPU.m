@@ -59,8 +59,8 @@ end
         if isempty(xypos) || size(xypos, 1)==1
             if r == 1
                 warning('first round xypos empty - using values from initial manual input')
-                assert(~isempty(o.TileInitialPosXY), 'xypos unavailable')
-                xypos = o.TileInitialPosXY;
+                assert(~isempty(o.TileInitialPosYX), 'xypos unavailable')
+                xypos = o.TileInitialPosYX;
                 xyposOld = xypos;
             else
                 warning('xypos empty - using values from previous round')
