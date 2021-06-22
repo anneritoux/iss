@@ -93,7 +93,7 @@ end
             % right
             dx = xypos(:,1)-xypos(:,1)'; % all pairs of x distances
             xStep = median(dx(abs(1- dx(:)/o.MicroscopeStepSize)<.5));
-            dy = xypos(:,1)-xypos(:,1)'; % all pairs of y distances
+            dy = xypos(:,2)-xypos(:,2)'; % all pairs of y distances
             yStep = median(dy(abs(1- dy(:)/o.MicroscopeStepSize)<.5));
         
         
@@ -110,6 +110,11 @@ end
             %this as we know what the answer should be.
             MaxY = max(TilePosYX(:,1));
             MaxX = max(TilePosYX(:,2));
+            %Sometimes get Nan, if only one Nan, then check if all tiles
+            %arranged along only one direction i.e. Nan should be 1.
+            if max(isnan([MaxX,MaxY])) && nanmax(MaxX,MaxY)==nSeries
+                if isnan(MaxX); MaxX=1; else; MaxY=1; end
+            end
             if MaxY*MaxX ~= nSeries
                 warning('Number of tiles (%d) is not equal to maximum Y position (%d) multiplied by maximum X position (%d)'...
                     , nSeries, MaxY, MaxX)
