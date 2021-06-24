@@ -270,8 +270,9 @@ end
     end
     
     o.EmptyTiles = cellfun(@isempty, squeeze(o.TileFiles(o.ReferenceRound,:,:,1)))*0;
-    if min(size(o.EmptyTiles))==1
-        o.EmptyTiles=o.EmptyTiles';  %Squeeze with a dimension of one transposes for some reason
+    %Get a bug here if one dimension is only 1.
+    if sum(size(o.TileFiles(o.ReferenceRound,:,:,o.AnchorChannel),2:3)==size(o.EmptyTiles))==0
+        o.EmptyTiles = o.EmptyTiles';
     end
     if UsedEmptyTiles
         o.EmptyTiles(:) = true;
