@@ -19,6 +19,8 @@ function o = find_spots2(o)          %ADDING t2 BIT BACK IN
 % Kenneth D. Harris, 29/3/17
 % GPL 3.0 https://www.gnu.org/licenses/gpl-3.0.en.html
 
+%% TO DO: CHECK IF PCR WORKS BETTER IF TREAT EACH Z-PIXEL AS SAME SIZE AS XY-PIXEL
+% I.E. Set o.Z_Pixel_size=o.xy_Pixel_size;
 %% variable naming conventions:
 % spot subgroups:
 % All: Any spot included in any tile (includes duplicates)
@@ -43,7 +45,10 @@ end
 
 %% basic variables
 rr = o.ReferenceRound;
-Tiles = find(~o.EmptyTiles)';
+NonemptyTiles = find(~o.EmptyTiles)';
+if size(NonemptyTiles,2)==1
+    NonemptyTiles = NonemptyTiles';
+end
 
 [nY, nX] = size(o.EmptyTiles);
 nTiles = nY*nX;
@@ -58,7 +63,7 @@ AllLocalYXZ = zeros(nAll,3);
 OriginalTile = zeros(nAll,1);
 
 ind = 1;
-for t=Tiles
+for t=NonemptyTiles
     MySpots = o.RawLocalYXZ{t};
     nMySpots = size(MySpots, 1);
     AllGlobalYXZ(ind:ind+nMySpots-1,:) = bsxfun(@plus, MySpots, o.TileOrigin(t,:,rr));
@@ -163,12 +168,13 @@ end
 %number of spots on tile/round with least spots.
 AllBaseSpotNo = cell2mat(cellfun(@size,AllBaseLocalYXZ,'uni',false));
 o.AllBaseSpotNo = AllBaseSpotNo(:,1:2:o.nRounds*2,:);
-if length(Tiles)==1
-    MinColorChannelSpotNo = squeeze(min(o.AllBaseSpotNo(Tiles,:,:)))';
+if length(NonemptyTiles)==1
+    o.AllBaseSpotNo = AllBaseSpotNo(1:2:o.nBP*2);
+    MinColorChannelSpotNo = o.AllBaseSpotNo;
 else
-    MinColorChannelSpotNo = min(min(o.AllBaseSpotNo(Tiles,:,:)),[],3);
+    MinColorChannelSpotNo = min(min(o.AllBaseSpotNo(NonemptyTiles,:,:)),[],3);
 end
-if ~ismember(string(o.InitialShiftChannel),string(o.UseRounds))
+if ~ismember(string(o.InitialShiftChannel),string(o.UseChannels))
     [~,o.InitialShiftChannel] = max(MinColorChannelSpotNo);
 end
 
@@ -209,7 +215,7 @@ for t=1:nTiles
 end
 
 for r = o.UseRounds
-    [o.D0(Tiles,:,r), OutlierShifts(Tiles,:,r)] = o.AmendShifts(o.D0(Tiles,:,r),Scores(Tiles,r),'FindSpots');
+    [o.D0(NonemptyTiles,:,r), OutlierShifts(NonemptyTiles,:,r)] = o.AmendShifts(o.D0(NonemptyTiles,:,r),Scores(NonemptyTiles,r),'FindSpots');
 end
 
 o.FindSpotsInfo.Scores = Scores;
@@ -349,7 +355,7 @@ save(fullfile(o.OutputDirectory, 'FindSpotsWorkspace.mat'), 'o', 'AllBaseLocalYX
 
 % plot those that were found and those that weren't
 if o.Graphics
-    plotSpotsResolved(o,ndGlobalYXZ,Good,Tiles,'Resolved Spots')
+    plotSpotsResolved(o,ndGlobalYXZ,Good,NonemptyTiles,'Resolved Spots')
 end
        
 o.SpotGlobalYXZ = GoodGlobalYXZ;

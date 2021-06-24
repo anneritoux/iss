@@ -34,7 +34,10 @@ function o = find_spots_FFt(o)
 
 %% basic variables
 rr = o.ReferenceRound;
-Tiles = find(~o.EmptyTiles)';
+NonemptyTiles = find(~o.EmptyTiles)';
+if size(NonemptyTiles,2)==1
+    NonemptyTiles = NonemptyTiles';
+end
 
 [nY, nX] = size(o.EmptyTiles);
 nTiles = nY*nX;
@@ -43,7 +46,7 @@ nTiles = nY*nX;
 o.RawLocalYXZ = cell(nTiles,1);  % cell array, giving spots in local coordinates
 o.RawIsolated = cell(nTiles,1);
 
-for t=Tiles
+for t=NonemptyTiles
     if mod(t,10)==0; fprintf('Detecting reference spots in tile %d\n', t); end
     [y,x] = ind2sub([nY nX], t);
     AnchorIm = o.load_3D(rr,y,x,o.AnchorChannel)-o.TilePixelValueShift;
@@ -65,7 +68,7 @@ AllLocalYXZ = zeros(nAll,3);
 OriginalTile = zeros(nAll,1);
 
 ind = 1;
-for t=Tiles
+for t=NonemptyTiles
     MySpots = o.RawLocalYXZ{t};
     nMySpots = size(MySpots, 1);
     AllGlobalYXZ(ind:ind+nMySpots-1,:) = bsxfun(@plus, MySpots, o.TileOrigin(t,:,rr));
@@ -302,7 +305,7 @@ save(fullfile(o.OutputDirectory, 'FindSpotsWorkspace.mat'), 'o', 'AllBaseLocalYX
 
 %% plot those that were found and those that weren't
 if o.Graphics
-    plotSpotsResolved(o,ndGlobalYXZ,Good,Tiles,'Resolved Spots')
+    plotSpotsResolved(o,ndGlobalYXZ,Good,NonemptyTiles,'Resolved Spots')
 end
        
 
