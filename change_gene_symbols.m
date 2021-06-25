@@ -1,4 +1,4 @@
-function change_gene_symbols(MarkerSize, FontSize, MultiCol)
+function New_symbols = change_gene_symbols(MarkerSize, FontSize, MultiCol)
 % ChangeGeneSymbols(MarkerSize, FontSize, nPerCol);
 %
 % changes gene symbols so in situ plots look nice. 
@@ -14,6 +14,7 @@ function change_gene_symbols(MarkerSize, FontSize, MultiCol)
 if nargin<1 || isempty(MarkerSize)
     MarkerSize = 6;
 end
+MarkerSize = 6;
 
 if nargin<2 || isempty(FontSize)
     FontSize = 5;
@@ -31,6 +32,8 @@ less_active =   hsv2rgb([.3 .2 .7]);
 pc =        hsv2rgb([1/3 1 1]);
 pc2 =       hsv2rgb([.27 1 .7]);
 in_general = hsv2rgb([2/3 1 1]);
+mg =         hsv2rgb([1 .5 1]);
+mg2 =        hsv2rgb([1 .3 .9]);
 
 sst =   hsv2rgb([.55 1 1]);
 pvalb = hsv2rgb([.7 .8 1]);
@@ -175,123 +178,152 @@ New_symbols = {...
     'Sulf2',    non_neuron, 'p'; ...
     
 
-    
+
+    'Atp6v0d2', mg, '+'; ...
+    'Bin1',     mg, 'o'; ...
+    'Bin2',     mg, '*'; ...
+    'C1qa',     mg, 'x'; ...
+    'C1qB',     mg, 's'; ...
+    'C1qC',     mg, 'd'; ...
+    'Ccr5',     mg, '^'; ...
+    'Csf1r',    mg, 'v'; ...
+    'Cx3cr1',   mg, '<'; ...
+    'Cyfip1',   mg, '>'; ...
+    'Grn',      mg, 'p'; ...
+    'Laptm5',   mg, 'h'; ...
+
+    'Olfml3',   mg2, '+'; ...
+    'P2ry12',   mg2, 'o'; ...
+    'Plcg2',    mg2, '*'; ...
+    'Pld3',     mg2, 'x'; ...
+    'Pld4',     mg2, 's'; ...
+    'Ptk2b',    mg2, 'd'; ...
+    'Sparc',    mg2, '^'; ...
+    'Tmem119',  mg2, 'v'; ...
+
     };
 
-% delete any existing legend
-fc = get(gcf, 'Children');
-for i=1:length(fc)
-    if strcmp(get(fc(i), 'UserData'), 'key')
-        delete(fc(i));
-    end
-end
-
-MainAxes = gca;
-
-n =  size(New_symbols,1);
-
-gc = get(MainAxes, 'children');
-MyChildren = [];
-for i=1:length(gc)
-    if (strcmp(gc(i).Type, 'line') || strcmp(gc(i).Type, 'scatter')) ...
-            && ~isempty(gc(i).DisplayName)
-        MyChildren = [MyChildren; i];
-    end
-end
-DisplayNames = {gc(MyChildren).DisplayName};
-% get first word of display name as gene
-GeneNames = cell(size(DisplayNames));
-for i=1:length(DisplayNames)
-    GeneNames{i} = strtok(DisplayNames{i});
-end
-    
-clear h s;
-j=1;
-Present = [];
-for i=1:n
-    MyGeneName = New_symbols{i,1};
-    l = find(strcmp(MyGeneName, GeneNames));
-    if ~isempty(l)
-        h(j) = gc(MyChildren(l));
-		if strcmp(h(j).Type, 'line')
-			set(h(j), 'Color', New_symbols{i,2});
-        elseif strcmp(h(j).Type, 'scatter')
-			set(h(j), 'CData', New_symbols{i,2});
-		end
-        set(h(j), 'Marker', New_symbols{i,3});
-
-        if MarkerSize>0
-			if strcmp(gc(l).Type, 'line')
-				set(h(j), 'MarkerSize', MarkerSize);
-			elseif strcmp(gc(l).Type, 'scatter')
-				set(h(j), 'SizeData', MarkerSize);
-			end
+if nargout<1
+    % delete any existing legend
+    fc = get(gcf, 'Children');
+    for i=1:length(fc)
+        if strcmp(get(fc(i), 'UserData'), 'key')
+            delete(fc(i));
         end
-        Present(j) = i;
-        j=j+1;
     end
-end
-
-other_h = setdiff(gc(MyChildren), h);
-other_symbols = {other_h.DisplayName};
-
-all_h = [h(:); other_h(:)];
-all_sym = {New_symbols{Present,1}, other_symbols{:}};
-
-% lh = legend([h(:); other_h(:)], ...
-%     {New_symbols{s,1}, other_symbols{:}}, ...
-%     'color', 'k', 'textcolor', 'w', 'fontsize', FontSize);
-% set(lh, 'color', 'k');
-% 
-% return;
-
-if MultiCol==0
-    lh = legend(all_h, all_sym, 'color', 'k', 'textcolor', 'w', 'fontsize', FontSize);
-    set(lh, 'color', 'k');
-else
-    ah = axes('Position', [.925 .13 .05 .8]);
-    set(ah, 'color', 'k'); cla; hold on; box off
-    set(ah, 'UserData', 'key');
-    for j=1:length(Present)
-        i = Present(j);
-        plot(ceil(j/MultiCol)+.1, mod(j-1,MultiCol), New_symbols{i,3}, 'Color', New_symbols{i,2});
-        text(ceil(j/MultiCol)+.3, mod(j-1,MultiCol), New_symbols{i,1}, 'color', 'w', 'fontsize', FontSize);
+    
+    MainAxes = gca;
+    
+    n =  size(New_symbols,1);
+    
+    gc = get(MainAxes, 'children');
+    MyChildren = [];
+    for i=1:length(gc)
+        if (strcmp(gc(i).Type, 'line') || strcmp(gc(i).Type, 'scatter')) ...
+                && ~isempty(gc(i).DisplayName)
+            MyChildren = [MyChildren; i];
+        end
     end
-    ylim([-1 MultiCol]);
-    set(ah, 'xtick', []);
-    set(ah, 'ytick', []);
-    set(ah, 'ydir', 'reverse');
+    DisplayNames = {gc(MyChildren).DisplayName};
+    % get first word of display name as gene
+    GeneNames = cell(size(DisplayNames));
+    for i=1:length(DisplayNames)
+        GeneNames{i} = strtok(DisplayNames{i});
+    end
+    
+    clear h s;
+    j=1;
+    Present = [];
+    for i=1:n
+        MyGeneName = New_symbols{i,1};
+        l = find(strcmp(MyGeneName, GeneNames));
+        if ~isempty(l)
+            h(j) = gc(MyChildren(l));
+            if strcmp(h(j).Type, 'line')
+                set(h(j), 'Color', New_symbols{i,2});
+            elseif strcmp(h(j).Type, 'scatter')
+                set(h(j), 'CData', New_symbols{i,2});
+            end
+            set(h(j), 'Marker', New_symbols{i,3});
+            
+            if MarkerSize>0
+                if strcmp(gc(l).Type, 'line')
+                    set(h(j), 'MarkerSize', MarkerSize);
+                elseif strcmp(gc(l).Type, 'scatter')
+                    set(h(j), 'SizeData', MarkerSize);
+                end
+            end
+            Present(j) = i;
+            j=j+1;
+        end
+    end
+    
+    other_h = setdiff(gc(MyChildren), h);
+    other_symbols = {other_h.DisplayName};
+    
+    all_h = [h(:); other_h(:)];
+    all_sym = {New_symbols{Present,1}, other_symbols{:}};
+    
+    % lh = legend([h(:); other_h(:)], ...
+    %     {New_symbols{s,1}, other_symbols{:}}, ...
+    %     'color', 'k', 'textcolor', 'w', 'fontsize', FontSize);
+    % set(lh, 'color', 'k');
+    %
+    % return;
+    
+    if MultiCol==0
+        lh = legend(all_h, all_sym, 'color', 'k', 'textcolor', 'w', 'fontsize', FontSize);
+        set(lh, 'color', 'k');
+    else
+        ah = axes('Position', [.925 .13 .05 .8]);
+        set(ah, 'color', 'k'); cla; hold on; box off
+        set(ah, 'UserData', 'key');
+        for j=1:length(Present)
+            i = Present(j);
+            plot(ceil(j/MultiCol)+.1, mod(j-1,MultiCol), New_symbols{i,3}, 'Color', New_symbols{i,2});
+            text(ceil(j/MultiCol)+.3, mod(j-1,MultiCol), New_symbols{i,1}, 'color', 'w', 'fontsize', FontSize);
+        end
+        if ~isempty(setdiff(GeneNames,New_symbols(:,1)))
+            j=j+1;
+            plot(ceil(j/MultiCol)+.1, mod(j-1,MultiCol), '.', 'Color', hsv2rgb([0,0,0.5]));
+            text(ceil(j/MultiCol)+.3, mod(j-1,MultiCol), 'Non Neuron', 'color', 'w', 'fontsize', FontSize);
+        end
+        ylim([-1 MultiCol]);
+        set(ah, 'xtick', []);
+        set(ah, 'ytick', []);
+        set(ah, 'ydir', 'reverse');
+    end
+    %     for c=1:nCols
+    %         rr=((c-1)*50 + 1):min(c*50, length(all_h));
+    %         if c==1
+    %             ah(c) = gca;
+    %             lh(c) = legend(all_h(rr), all_sym(rr), 'color', 'k', 'textcolor', 'w', 'fontsize', FontSize, 'location', 'east');
+    %             set(lh(c), 'color', 'k');
+    %             pos(c,:) = get(lh(c), 'position');
+    %         else
+    %             ah(c) = axes('position',get(gca,'position'), 'visible','off');
+    %             lh(c) = legend(ah(c), all_h(rr), all_sym(rr), 'color', 'k', 'textcolor', 'w', 'fontsize', FontSize, 'location', 'east');
+    %             set(lh(c), 'position', pos(c-1,:) + [1.1 0 0 0]*pos(c-1,3));
+    %             uistack(lh(c), 'top');
+    %         end
+    %     end
+    %     axes(ah(1));
+    
+    %    error('multicolumn not done yet!');
+    % end
+    %     for i=1:nCols
+    %         first = 1+(i-1)*nCols;
+    %         last = min(i*nCols,length(all_h));
+    %         lh = legend(all_h(first:last), ...
+    %             all_sym{first:last});%, ...
+    %             %'color', 'k', 'textcolor', 'w', 'fontsize', FontSize);
+    %         set(lh, 'color', 'k');
+    %     end
+    set(gcf, 'color', 'k');
+    set(gcf, 'InvertHardcopy', 'off');
+    
+    axes(MainAxes)
+    uistack(ah, 'top');
 end
-%     for c=1:nCols
-%         rr=((c-1)*50 + 1):min(c*50, length(all_h));
-%         if c==1
-%             ah(c) = gca;
-%             lh(c) = legend(all_h(rr), all_sym(rr), 'color', 'k', 'textcolor', 'w', 'fontsize', FontSize, 'location', 'east');
-%             set(lh(c), 'color', 'k');
-%             pos(c,:) = get(lh(c), 'position');
-%         else
-%             ah(c) = axes('position',get(gca,'position'), 'visible','off');
-%             lh(c) = legend(ah(c), all_h(rr), all_sym(rr), 'color', 'k', 'textcolor', 'w', 'fontsize', FontSize, 'location', 'east');
-%             set(lh(c), 'position', pos(c-1,:) + [1.1 0 0 0]*pos(c-1,3));
-%             uistack(lh(c), 'top');
-%         end
-%     end
-%     axes(ah(1));
-    
-%    error('multicolumn not done yet!');
-% end
-%     for i=1:nCols
-%         first = 1+(i-1)*nCols;
-%         last = min(i*nCols,length(all_h));
-%         lh = legend(all_h(first:last), ...
-%             all_sym{first:last});%, ...
-%             %'color', 'k', 'textcolor', 'w', 'fontsize', FontSize);
-%         set(lh, 'color', 'k');
-%     end
-set(gcf, 'color', 'k');
-set(gcf, 'InvertHardcopy', 'off');
-    
-axes(MainAxes)
-uistack(ah, 'top');
 
 end
