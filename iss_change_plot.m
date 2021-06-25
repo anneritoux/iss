@@ -71,11 +71,15 @@ else
 end
 
 if nargin>=5 && length(UseSpots)==length(o.SpotCodeNo) && islogical(UseSpots)
-    S.QualOK = UseSpots & ismember(o.SpotCodeNo,S.GeneNoToShow);
-else
-    if nargin>=5; warning('UseSpots not valid, using quality_threshold');end
     if strcmpi('Prob',S.CallMethod)
-        S.QualOK = o.quality_threshold_prob & ismember(o.SpotCodeNo,S.GeneNoToShow);
+        S.QualOK = UseSpots & ismember(o.pSpotCodeNo,S.GeneNoToShow);
+    else
+        S.QualOK = UseSpots & ismember(o.SpotCodeNo,S.GeneNoToShow);
+    end
+elseif nargin>=5
+    warning('UseSpots not valid, using quality_threshold');
+    if strcmpi('Prob',S.CallMethod)
+        S.QualOK = o.quality_threshold_prob & ismember(o.pSpotCodeNo,S.GeneNoToShow);
     else
         S.QualOK = o.quality_threshold & ismember(o.SpotCodeNo,S.GeneNoToShow);
     end
