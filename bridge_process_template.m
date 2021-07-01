@@ -20,8 +20,9 @@ o.LogToFile = 1;                %Set to 1 if you want to save command window to 
 o.InputDirectory = '...\Experiment1\raw_data';     %Folder path of raw data
 
 %FileBase{r} is the file name of the raw data of round r in o.InputDirectory
-o.nRounds = 7;
-o.nExtraRounds = 1;         %Treat Anchor channel as extra round
+o.nBP = 7;              %Number of Channels
+o.nRounds = 7;          %Number of Imaging Rounds
+o.nExtraRounds = 1;     %Treat Anchor channel as extra round
 o.FileBase = cell(o.nRounds+o.nExtraRounds,1);
 o.FileBase{1} = 'round0';
 o.FileBase{2} = 'round1';
@@ -49,7 +50,8 @@ end
 
 %parameters
 o.TileSz = 2048;
-o.bpLabels = {'0', '1', '2', '3','4','5','6'}; %order of bases
+%o.bpLabels = {'0', '1', '2', '3','4','5','6'}; 
+o.bpLabels = cellstr(num2str((0:o.nBP-1)'))';     %order of bases
 
 %These specify the dimensions of the filter. R1 should be approximately the
 %size of the spot in the respective direction and R2 should be double this.
