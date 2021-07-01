@@ -73,6 +73,17 @@ o.nZ = 'auto';
 o.MaxWaitTime1 = 60;      %Less time for round 1 incase name is wrong
 o.MaxWaitTime = 21600;  
 
+%Errors to ensure channels/rounds selected correctly
+if o.InitialShiftChannel>o.nBP
+    error('Ensure o.InitialShiftChannel <= o.nBP = %.0f',o.nBP);
+end
+if o.ExtractScaleChannel>o.nBP
+    error('Ensure o.ExtractScaleChannel <= o.nBP = %.0f',o.nBP);
+end
+if o.AnchorChannel>o.nBP
+    error('Ensure o.AnchorChannel <= o.nBP = %.0f',o.nBP);
+end
+
 %run code
 % try
 %     o = o.extract_and_filter;
