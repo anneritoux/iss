@@ -56,6 +56,12 @@ end
             o.nZ = nZ;
         end
         
+        if o.ExtractScaleChannel>nChannels
+            warning(['o.ExtractScaleChannel value of %.0f is not valid. ',...
+                'Setting to last channel: %.0f'],o.ExtractScaleChannel,nChannels);
+            o.ExtractScaleChannel = nChannels;
+        end
+        
         if isempty(xypos) || size(xypos, 1)==1
             if r == 1
                 warning('first round xypos empty - using values from initial manual input')

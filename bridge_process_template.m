@@ -20,6 +20,8 @@ o.LogToFile = 1;                %Set to 1 if you want to save command window to 
 o.InputDirectory = '...\Experiment1\raw_data';     %Folder path of raw data
 
 %FileBase{r} is the file name of the raw data of round r in o.InputDirectory
+o.nRounds = 7;
+o.nExtraRounds = 1;         %Treat Anchor channel as extra round
 o.FileBase = cell(o.nRounds+o.nExtraRounds,1);
 o.FileBase{1} = 'round0';
 o.FileBase{2} = 'round1';
@@ -46,8 +48,6 @@ end
 %% extract and filter
 
 %parameters
-o.nRounds = 7;
-o.nExtraRounds = 1;         %Treat Anchor channel as extra round
 o.TileSz = 2048;
 o.bpLabels = {'0', '1', '2', '3','4','5','6'}; %order of bases
 
