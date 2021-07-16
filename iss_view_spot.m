@@ -87,7 +87,7 @@ function iss_view_spot(o, FigNo, ScoreMethod, SpotNum)
             end
             imagesc([x1 x2], [y1 y2], BaseImSm); hold on
             axis([x0-plsz, x0+plsz, y0-plsz, y0+plsz]);
-            caxis([0,max(150,o.cSpotColors(SpotNo,b,r))]);
+            caxis([min(0,min(BaseImSm(:))),max(150,max(BaseImSm(:)))]);
             colorbar;
             if numCharCode(r)==b
                 ax = gca;
