@@ -228,7 +228,7 @@ end
                     %Finds o.ExtractScale from first image and uses this
                     %value for the rest
                     if strcmpi(o.ExtractScale, 'auto')
-                        o.ExtractScale = 30000/max(IFS(:));
+                        o.ExtractScale = o.ExtractScaleNorm/max(IFS(:));
                     end
                     IFS = IFS*o.ExtractScale;
                     
