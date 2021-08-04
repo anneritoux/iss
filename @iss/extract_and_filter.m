@@ -237,9 +237,9 @@ end
                     %value for the rest
                     if strcmpi(o.ExtractScale, 'auto')
                         o.ExtractScale = o.ExtractScaleNorm/max(IFS(:));
+                        save(fullfile(o.OutputDirectory, 'oExtract'), 'o', '-v7.3');
                     end
-                    IFS = IFS*o.ExtractScale;
-                    
+                    IFS = IFS*o.ExtractScale;                  
                     %Determine auto thresholds
                     o.AutoThresh(t,c,r) = gather(median(abs(IFS(:)))*o.AutoThreshMultiplier);
                 end

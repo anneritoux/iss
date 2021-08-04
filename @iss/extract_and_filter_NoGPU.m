@@ -283,6 +283,7 @@ end
                                 datestr(datetime('now'),'dd-mm-yy HH-MM'),'.mat']),...
                                 'ExtractScale', '-v7.3');
                             o.ExtractScale = ExtractScale;
+                            save(fullfile(o.OutputDirectory, 'oExtract'), 'o', '-v7.3');
                         end
                         IFS = IFS*o.ExtractScale;
                         %Determine auto thresholds
