@@ -134,6 +134,16 @@ end
                 TilePosX = repmat([flip(1:MaxX),1:MaxX],1,ceil(MaxY/2));
                 TilePosYX(1:nSeries,2) = TilePosX(1:nSeries);
             end
+            
+            if (min(size(o.EmptyTiles))==1 && min(o.EmptyTiles)~=0) || ...
+                    (min(size(o.EmptyTiles)==[MaxY, MaxX]) && min(o.EmptyTiles(:))==0 && ...
+                    max(o.EmptyTiles(:)==1))
+                UsedEmptyTiles = true;
+                if min(o.EmptyTiles(:))==0
+                    o.EmptyTiles = find(o.EmptyTiles(:)==0);
+                end
+                EmptyTilesOrig = o.EmptyTiles;
+            end
         end
         
         %Tile index in nd2 file different to index in o.EmptyTiles
@@ -181,8 +191,6 @@ end
                     %If specify o.EmptyTiles, only run for tiles in o.EmptyTiles
                     o.TilePosYXC(Index,:) = [TilePosYX(t_index,:),c];          %Think first Z plane is the highest
                     o.TileFiles{r,o.TilePosYXC(Index,1), o.TilePosYXC(Index,2),o.TilePosYXC(Index,3)} = fName{Index};
-                    UsedEmptyTiles = true;
-                    EmptyTilesOrig = o.EmptyTiles;
                     Index = Index+1;
                     continue;
                 end
