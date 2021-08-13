@@ -135,7 +135,7 @@ else
 end
 
 %If anchor background or all zero then change climits.
-if min(S.Background.CData(:))>20 || max(S.Background.CData(:))==0
+if min(S.Background.CData(S.Background.CData(:)>0))>20 || max(S.Background.CData(:))==0
     caxis([o.TilePixelValueShift,o.TilePixelValueShift+1500]);
 end
 

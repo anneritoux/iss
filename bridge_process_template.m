@@ -168,7 +168,7 @@ o.CombiQualThresh = 0.7;
 
 Roi = round([1, max(o.SpotGlobalYXZ(:,2)), ...
     1, max(o.SpotGlobalYXZ(:,1)),...
-    min(o.SpotGlobalYXZ(:,3)), max(o.SpotGlobalYXZ(:,3))]);
+    1, max(o.SpotGlobalYXZ(:,3))]);
 BackgroundImage = zeros(Roi(4),Roi(2),Roi(6)-Roi(5)+1,'uint16');
 for z = Roi(5):Roi(6)
     BackgroundImage(:,:,z-Roi(5)+1) = imread(o.BigDapiFile, z,'PixelRegion', {Roi(3:4), Roi(1:2)});
