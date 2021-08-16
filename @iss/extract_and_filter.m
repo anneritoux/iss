@@ -97,44 +97,10 @@ end
                 o.HistValues = -o.TilePixelValueShift:1:2^16-o.TilePixelValueShift;  %Entire range of possible pixel values
                 o.HistCounts = zeros(length(o.HistValues),nChannels,o.nRounds);
             end
-            
-            % find x and y grid spacing as median of distances that are about
-            % right
-            dx = xypos(:,1)-xypos(:,1)'; % all pairs of x distances
-            xStep = median(dx(abs(1- dx(:)/o.MicroscopeStepSize)<.5));
-            dy = xypos(:,2)-xypos(:,2)'; % all pairs of y distances
-            yStep = median(dy(abs(1- dy(:)/o.MicroscopeStepSize)<.5));
-        
-        
-            % find coordinates for each tile
-            if isempty(o.TileInitialPosYX)
-                if nSeries==1
-                    o.TileInitialPosYX = [1,1];
-                else
-                    o.TileInitialPosYX = fliplr(1+round((xypos - min(xypos))./[xStep yStep]));
-                end
+            if isempty(o.TilePosYX)
+                o = o.get_TilePos(xypos, nSeries);
             end
-            TilePosYX = o.TileInitialPosYX;
-            %Below is a safeguard incase wrong positions found - can do
-            %this as we know what the answer should be.
-            MaxY = max(TilePosYX(:,1));
-            MaxX = max(TilePosYX(:,2));
-            %Sometimes get Nan, if only one Nan, then check if all tiles
-            %arranged along only one direction i.e. Nan should be 1.
-            if max(isnan([MaxX,MaxY])) && nanmax(MaxX,MaxY)==nSeries
-                if isnan(MaxX); MaxX=1; else; MaxY=1; end
-            end
-            if MaxY*MaxX ~= nSeries
-                warning('Number of tiles (%d) is not equal to maximum Y position (%d) multiplied by maximum X position (%d)'...
-                    , nSeries, MaxY, MaxX)
-                break
-            else
-                TilePosY = flip(repelem(1:MaxY,MaxX));
-                TilePosYX(:,1) = TilePosY;
-                TilePosX = repmat([flip(1:MaxX),1:MaxX],1,ceil(MaxY/2));
-                TilePosYX(1:nSeries,2) = TilePosX(1:nSeries);
-            end
-            
+           
             if (min(size(o.EmptyTiles))==1 && min(o.EmptyTiles)~=0) || ...
                     (min(size(o.EmptyTiles)==[MaxY, MaxX]) && min(o.EmptyTiles(:))==0 && ...
                     max(o.EmptyTiles(:)==1))
@@ -147,7 +113,7 @@ end
         end
         
         %Tile index in nd2 file different to index in o.EmptyTiles
-        t_save_value = sub2ind([MaxY,MaxX],TilePosYX(:,1),TilePosYX(:,2));
+        t_save_value = sub2ind([MaxY,MaxX],o.TilePosYX(:,1),o.TilePosYX(:,2));
         
         o.TilePosYXC = zeros(nSerieswPos*nChannels,3);
 
@@ -172,7 +138,7 @@ end
                 
                 if exist(fName{Index}, 'file')
                     fprintf('Round %d, tile %d, channel %d already done.\n', r, t, c);
-                    o.TilePosYXC(Index,:) = [TilePosYX(t_index,:),c];          %Think first Z plane is the highest
+                    o.TilePosYXC(Index,:) = [o.TilePosYX(t_index,:),c];          %Think first Z plane is the highest
                     o.TileFiles{r,o.TilePosYXC(Index,1), o.TilePosYXC(Index,2),o.TilePosYXC(Index,3)} = fName{Index};
                     if o.AutoThresh(t,c,r) == 0
                         if c == o.DapiChannel && r == o.ReferenceRound; continue; end
@@ -189,7 +155,7 @@ end
                     continue;
                 elseif min(size(o.EmptyTiles))==1 && ~ismember(t,o.EmptyTiles)
                     %If specify o.EmptyTiles, only run for tiles in o.EmptyTiles
-                    o.TilePosYXC(Index,:) = [TilePosYX(t_index,:),c];          %Think first Z plane is the highest
+                    o.TilePosYXC(Index,:) = [o.TilePosYX(t_index,:),c];          %Think first Z plane is the highest
                     o.TileFiles{r,o.TilePosYXC(Index,1), o.TilePosYXC(Index,2),o.TilePosYXC(Index,3)} = fName{Index};
                     Index = Index+1;
                     continue;
@@ -264,7 +230,7 @@ end
                 end
                 
 
-                o.TilePosYXC(Index,:) = [TilePosYX(t_index,:),c];          %Think first Z plane is the highest
+                o.TilePosYXC(Index,:) = [o.TilePosYX(t_index,:),c];          %Think first Z plane is the highest
                 o.TileFiles{r,o.TilePosYXC(Index,1), o.TilePosYXC(Index,2),o.TilePosYXC(Index,3)} = fName{Index};
                 fprintf('Round %d tile %d colour channel %d finished.\n', r, t, c);                                               
                 Index = Index+1; 
