@@ -504,12 +504,16 @@ classdef iss
         % r. To get the global coordinate of a point, add this to the local
         % coordinate within the tile (counting from 1)
         TileOrigin;
-        
+
         % TileInitialPosXY(t,:): coordinate of tile t in integers. This is
         % the derived coordinates, before using the fact we know the answer
         % to get TilePosYXC.
         TileInitialPosYX;
         
+        % TilePosYX is the updated version of TileInitialPosYX, after being
+        % modified by the get_TilePos function.
+        TilePosYX;
+
         %RawLocalYXZ{t} stores the YXZ coordinates of spots found in the
         %anchor round of tile t
         RawLocalYXZ;

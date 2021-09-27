@@ -7,7 +7,7 @@
 %CHECK BEFORE EACH RUN
 o = iss;
 o.ReferenceRound = 8;           %Round that contains Dapi image (Starting from 1).
-o.AnchorChannel =  ;            %Channel that has most spots in o.AnchorRound (Starting from 1).
+o.AnchorChannel = 5 ;            %Channel that has most spots in o.AnchorRound (Starting from 1).
 o.DapiChannel = 1;              %Channel in o.AnchorRound that contains Dapi images (Starting from 1).
 o.InitialShiftChannel = o.AnchorChannel;      %Channel to use to find initial shifts between rounds (Starting from 1).
 o.ExtractScaleChannel = o.AnchorChannel;	  %Channel which is used to get scaling for imaging rounds (Starting from 1).
@@ -17,27 +17,27 @@ o.LogToFile = 1;                %Set to 1 if you want to save command window to 
 
 %% File Names
 %CHECK BEFORE EACH RUN
-o.InputDirectory = '...\Experiment1\raw_data';     %Folder path of raw data
+o.InputDirectory = '\\128.40.224.65\Subjects\FR187\ISS\seq\FR178 b2a3 b2a5\B2A3\raw_data';     %Folder path of raw data
 
 %FileBase{r} is the file name of the raw data of round r in o.InputDirectory
 o.nBP = 7;              %Number of Channels
 o.nRounds = 7;          %Number of Imaging Rounds
 o.nExtraRounds = 1;     %Treat Anchor channel as extra round
 o.FileBase = cell(o.nRounds+o.nExtraRounds,1);
-o.FileBase{1} = 'round0';
-o.FileBase{2} = 'round1';
-o.FileBase{3} = 'round2';
-o.FileBase{4} = 'round3';
-o.FileBase{5} = 'round4';
-o.FileBase{6} = 'round5';
-o.FileBase{7} = 'round6';
-o.FileBase{8} = 'anchor';    %Make sure the last round is the anchor
+o.FileBase{1} = 'FR178_b2a3_R0';
+o.FileBase{2} = 'FR178_b2a3_R1';
+o.FileBase{3} = 'FR178_b2a3_R2';
+o.FileBase{4} = 'FR178_b2a3_R3';
+o.FileBase{5} = 'FR178_b2a3_R4';
+o.FileBase{6} = 'FR178_b2a3_R5';
+o.FileBase{7} = 'FR178_b2a3_R6';
+o.FileBase{8} = 'FR178_b2a3_R7';    %Make sure the last round is the anchor
 
-o.TileDirectory = '...\Experiment1\tiles'; 
-o.OutputDirectory = '...\Experiment1\output';  
+o.TileDirectory = '\\128.40.224.65\Subjects\FR187\ISS\seq\FR178 b2a3 b2a5\B2A3\tiles'; 
+o.OutputDirectory = '\\128.40.224.65\Subjects\FR187\ISS\seq\FR178 b2a3 b2a5\B2A3\output';  
 %Codebook is a text file containing 2 columns - 1st is the gene name. 2nd is
 %the code, length o.nRounds and containing numbers in the range from 0 to o.nBP-1.
-o.CodeFile = '\\zserver\Data\ISS\codebook_73gene_6channels_2col.txt';
+o.CodeFile = 'C:\Users\Experiment\Documents\GitHub\73g_codebook';
 
 %% Logging
 if o.LogToFile
