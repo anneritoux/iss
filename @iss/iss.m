@@ -514,6 +514,11 @@ classdef iss
         % modified by the get_TilePos function.
         TilePosYX;
 
+        % Temporary variables generated as a part of the get_TilePos
+        % function which are needed outside that function.
+        MaxX;
+        MaxY;
+
         %RawLocalYXZ{t} stores the YXZ coordinates of spots found in the
         %anchor round of tile t
         RawLocalYXZ;

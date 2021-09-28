@@ -102,7 +102,7 @@ end
             end
            
             if (min(size(o.EmptyTiles))==1 && min(o.EmptyTiles)~=0) || ...
-                    (min(size(o.EmptyTiles)==[MaxY, MaxX]) && min(o.EmptyTiles(:))==0 && ...
+                    (min(size(o.EmptyTiles)==[o.MaxY, o.MaxX]) && min(o.EmptyTiles(:))==0 && ...
                     max(o.EmptyTiles(:)==1))
                 UsedEmptyTiles = true;
                 if min(o.EmptyTiles(:))==0
@@ -113,7 +113,7 @@ end
         end
         
         %Tile index in nd2 file different to index in o.EmptyTiles
-        t_save_value = sub2ind([MaxY,MaxX],o.TilePosYX(:,1),o.TilePosYX(:,2));
+        t_save_value = sub2ind([o.MaxY,o.MaxX],o.TilePosYX(:,1),o.TilePosYX(:,2));
         
         o.TilePosYXC = zeros(nSerieswPos*nChannels,3);
 
